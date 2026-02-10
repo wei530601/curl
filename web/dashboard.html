@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord 機器人控制台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', -apple-system, sans-serif;
+            background: #1a1a1a;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: #2b2b2b;
+            border-bottom: 1px solid #333;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #2563eb;
+        }
+
+        .user-name {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn {
+            background: #dc2626;
+            color: #ffffff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: #b91c1c;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #2b2b2b;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #2563eb;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            color: #ffffff;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .section {
+            background: #2b2b2b;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            color: #ffffff;
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .server-card {
+            background: #1a1a1a;
+            padding: 1.5rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: background 0.2s;
+        }
+
+        .server-card:hover {
+            background: #222;
+        }
+
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .server-info {
+            flex: 1;
+        }
+
+        .server-name {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .server-members {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .admin-badge {
+            background: #2563eb;
+            color: #ffffff;
+            padding: 0.2rem 0.6rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            color: #888;
+            padding: 2rem;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-brand">
+            <span>🤖</span>
+            <span>Discord 機器人控制台</span>
+        </div>
+        <div class="navbar-user">
+            <div class="user-info">
+                <img id="userAvatar" class="user-avatar" alt="Avatar">
+                <span id="userName" class="user-name">載入中...</span>
+            </div>
+            <a href="/logout" class="logout-btn">登出</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">伺服器數量</div>
+                <div class="stat-value" id="serverCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">總用戶數</div>
+                <div class="stat-value" id="userCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">機器人狀態</div>
+                <div class="stat-value" id="botStatus" style="font-size: 1.5rem; color: #10b981;">● 運行中</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📊 您的伺服器</h2>
+            <div id="serverList" class="server-grid">
+                <div class="loading">載入伺服器列表</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 載入機器人信息
+        fetch('/api/bot-info')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('serverCount').textContent = data.server_count;
+                document.getElementById('userCount').textContent = data.user_count.toLocaleString();
+            })
+            .catch(err => console.error('Error loading bot info:', err));
+
+        // 載入伺服器列表
+        fetch('/api/servers')
+            .then(res => res.json())
+            .then(data => {
+                const serverList = document.getElementById('serverList');
+                
+                if (data.servers.length === 0) {
+                    serverList.innerHTML = '<div class="loading">您還沒有加入任何使用此機器人的伺服器</div>';
+                    return;
+                }
+
+                serverList.innerHTML = '';
+                
+                data.servers.forEach(server => {
+                    const card = document.createElement('div');
+                    card.className = 'server-card';
+                    
+                    const icon = document.createElement('div');
+                    icon.className = 'server-icon';
+                    
+                    if (server.icon) {
+                        const img = document.createElement('img');
+                        img.src = server.icon;
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.borderRadius = '50%';
+                        icon.appendChild(img);
+                    } else {
+                        icon.textContent = server.name.charAt(0);
+                    }
+                    
+                    const info = document.createElement('div');
+                    info.className = 'server-info';
+                    
+                    const name = document.createElement('div');
+                    name.className = 'server-name';
+                    name.textContent = server.name;
+                    
+                    const members = document.createElement('div');
+                    members.className = 'server-members';
+                    members.textContent = `${server.member_count} 位成員`;
+                    
+                    info.appendChild(name);
+                    info.appendChild(members);
+                    
+                    card.appendChild(icon);
+                    card.appendChild(info);
+                    
+                    if (server.is_admin) {
+                        const badge = document.createElement('div');
+                        badge.className = 'admin-badge';
+                        badge.textContent = '管理員';
+                        card.appendChild(badge);
+                    }
+                    
+                    serverList.appendChild(card);
+                });
+            })
+            .catch(err => {
+                console.error('Error loading servers:', err);
+                document.getElementById('serverList').innerHTML = '<div class="loading">載入失敗</div>';
+            });
+    </script>
+</body>
+</html>
