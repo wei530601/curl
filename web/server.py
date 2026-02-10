@@ -38,6 +38,7 @@ class WebServer:
         self.app.router.add_get('/api/guilds', self.api_guilds)
         self.app.router.add_get('/api/stats/{guild_id}', self.api_stats)
         self.app.router.add_get('/api/data/{guild_id}/{data_type}', self.api_data)
+        self.app.router.add_post('/api/welcome/{guild_id}/toggle', self.api_toggle_welcome)
     
     async def index(self, request):
         """主頁"""
@@ -223,6 +224,60 @@ class WebServer:
             with open(data_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             return web.json_response({'data': data, 'exists': True})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_toggle_welcome(self, request):
+        """API：切換歡迎系統開關"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            # 獲取請求數據
+            data = await request.json()
+            toggle_type = data.get('type')  # 'welcome' 或 'leave'
+            enabled = data.get('enabled')  # True 或 False
+            
+            if toggle_type not in ['welcome', 'leave']:
+                return web.json_response({'error': 'Invalid type'}, status=400)
+            
+            # 讀取現有設定
+            data_file = os.path.join('data', guild_id, 'welcome.json')
+            
+            if not os.path.exists(data_file):
+                # 創建預設設定
+                os.makedirs(os.path.dirname(data_file), exist_ok=True)
+                settings = {
+                    'welcome_enabled': False,
+                    'leave_enabled': False,
+                    'welcome_channel': None,
+                    'leave_channel': None,
+                    'welcome_message': '歡迎 {user} 加入 {server}！',
+                    'leave_message': '{username} 離開了伺服器'
+                }
+            else:
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+            
+            # 更新設定
+            if toggle_type == 'welcome':
+                settings['welcome_enabled'] = enabled
+            else:
+                settings['leave_enabled'] = enabled
+            
+            # 儲存設定
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({
+                'success': True,
+                'settings': settings
+            })
+            
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
     
