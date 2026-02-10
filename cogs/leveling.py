@@ -11,27 +11,36 @@ class Leveling(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.data_file = "levels.json"
+        self.data_dir = "data"
         self.cooldowns = {}  # 防止刷經驗
-        self.load_data()
+        self.levels = {}
+        # 確保 data 目錄存在
+        os.makedirs(self.data_dir, exist_ok=True)
     
-    def load_data(self):
-        """載入等級数据"""
-        if os.path.exists(self.data_file):
-            with open(self.data_file, 'r', encoding='utf-8') as f:
-                self.levels = json.load(f)
-        else:
-            self.levels = {}
+    def get_data_file(self, guild_id: str):
+        """獲取伺服器數據檔案路徑"""
+        guild_dir = os.path.join(self.data_dir, guild_id)
+        os.makedirs(guild_dir, exist_ok=True)
+        return os.path.join(guild_dir, "levels.json")
     
-    def save_data(self):
-        """保存等級数据"""
-        with open(self.data_file, 'w', encoding='utf-8') as f:
-            json.dump(self.levels, f, indent=2, ensure_ascii=False)
+    def load_data(self, guild_id: str):
+        """載入伺服器等級數據"""
+        data_file = self.get_data_file(guild_id)
+        if os.path.exists(data_file):
+            with open(data_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {}
+    
+    def save_data(self, guild_id: str):
+        """保存伺服器等級數據"""
+        data_file = self.get_data_file(guild_id)
+        with open(data_file, 'w', encoding='utf-8') as f:
+            json.dump(self.levels.get(guild_id, {}), f, indent=2, ensure_ascii=False)
     
     def get_user_data(self, guild_id: str, user_id: str):
         """获取用戶数据"""
         if guild_id not in self.levels:
-            self.levels[guild_id] = {}
+            self.levels[guild_id] = self.load_data(guild_id)
         
         if user_id not in self.levels[guild_id]:
             self.levels[guild_id][user_id] = {
@@ -163,9 +172,13 @@ class Leveling(commands.Cog):
         guild_id = str(interaction.guild.id)
         user_id = str(user.id)
         
+        # 確保載入數據
+        if guild_id not in self.levels:
+            self.levels[guild_id] = self.load_data(guild_id)
+        
         if guild_id in self.levels and user_id in self.levels[guild_id]:
             del self.levels[guild_id][user_id]
-            self.save_data()
+            self.save_data(guild_id)
             await interaction.response.send_message(f"✅ 已重置 {user.mention} 的等級", ephemeral=True)
         else:
             await interaction.response.send_message("❌ 該用戶沒有等級数据", ephemeral=True)
@@ -203,7 +216,7 @@ class Leveling(commands.Cog):
         
         # 計算新等級
         new_level = self.calculate_level(data["xp"])
-        data["level"] = new_level
+        data["level"] =guild_id new_level
         data["last_message"] = now.isoformat()
         
         # 保存数据
@@ -222,7 +235,11 @@ class Leveling(commands.Cog):
                 await message.channel.send(embed=embed, delete_after=10)
             except:
                 pass
-    
+    # 載入所有伺服器的數據
+        for guild in self.bot.guilds:
+            guild_id = str(guild.id)
+            self.levels[guild_id] = self.load_data(guild_id)
+        
     @commands.Cog.listener()
     async def on_ready(self):
         print(f'📦 {self.__class__.__name__} cog已載入')
