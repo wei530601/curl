@@ -4,9 +4,8 @@ from aiohttp_session import setup, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 import os
 import json
-from cryptography import fernet
+from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-import base64
 
 load_dotenv()
 
@@ -27,7 +26,7 @@ class WebServer:
         self.app = web.Application()
         
         # 設定加密 session
-        secret_key = fernet.Fernet.generate_key()
+        secret_key = Fernet.generate_key()
         setup(self.app, EncryptedCookieStorage(secret_key))
         
         self.setup_routes()
