@@ -1,4 +1,4 @@
-# Discord Bot with Slash Commands & Cogs
+# curl 源代碼
 
 这是一個使用Python编写的Discord機器人，支援Slash Commands和Cogs模組化結構。
 
