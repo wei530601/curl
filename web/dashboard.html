@@ -382,53 +382,53 @@
                     const settings = data.data;
                     const welcomeChecked = settings.welcome_enabled ? 'checked' : '';
                     const leaveChecked = settings.leave_enabled ? 'checked' : '';
-                    const welcomeStatusColor = settings.welcome_enabled ? '#10b981' : '#6b7280';
-                    const leaveStatusColor = settings.leave_enabled ? '#10b981' : '#6b7280';
+                    const welcomeStatusColor = settings.welcome_enabled ? '#2563eb' : '#6b7280';
+                    const leaveStatusColor = settings.leave_enabled ? '#2563eb' : '#6b7280';
                     
                     container.innerHTML = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid ${welcomeStatusColor};">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                    <div style="color: #888; font-size: 0.9rem;">歡迎系統</div>
-                                    <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                            <div style="background: #1a1a1a; padding: 1.25rem; border-left: 3px solid ${welcomeStatusColor};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <div style="color: #ccc; font-size: 0.95rem; font-weight: 500;">歡迎系統</div>
+                                    <label style="position: relative; display: inline-block; width: 44px; height: 22px; cursor: pointer;">
                                         <input type="checkbox" id="welcome-toggle" ${welcomeChecked} 
                                                onchange="toggleWelcome('welcome', this.checked)"
                                                style="opacity: 0; width: 0; height: 0;">
-                                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
-                                                     background-color: ${settings.welcome_enabled ? '#2563eb' : '#4b5563'}; 
-                                                     transition: 0.3s; border-radius: 24px;">
-                                            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: ${settings.welcome_enabled ? '26px' : '3px'}; 
-                                                         bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%;"></span>
+                                        <span style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                                                     background: ${settings.welcome_enabled ? '#333' : '#2b2b2b'}; 
+                                                     transition: 0.2s; border: 1px solid ${settings.welcome_enabled ? '#2563eb' : '#444'};">
+                                            <span style="position: absolute; height: 14px; width: 14px; left: ${settings.welcome_enabled ? '26px' : '4px'}; 
+                                                         top: 3px; background: ${settings.welcome_enabled ? '#2563eb' : '#666'}; transition: 0.2s;"></span>
                                         </span>
                                     </label>
                                 </div>
                                 <div style="margin-bottom: 0.5rem;">
-                                    <span style="color: ${welcomeStatusColor}; font-weight: 600;">${settings.welcome_enabled ? '已開啟' : '已關閉'}</span>
+                                    <span style="color: ${welcomeStatusColor}; font-weight: 500; font-size: 0.9rem;">${settings.welcome_enabled ? '已開啟' : '已關閉'}</span>
                                 </div>
-                                <div style="color: #888; font-size: 0.85rem;">
-                                    頻道：${settings.welcome_channel ? `<span style="color: #2563eb;">#${settings.welcome_channel}</span>` : '未設定'}
+                                <div style="color: #666; font-size: 0.85rem;">
+                                    頻道：${settings.welcome_channel ? `<span style="color: #888;">#${settings.welcome_channel}</span>` : '<span style="color: #555;">未設定</span>'}
                                 </div>
                             </div>
-                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid ${leaveStatusColor};">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                                    <div style="color: #888; font-size: 0.9rem;">離開系統</div>
-                                    <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                            <div style="background: #1a1a1a; padding: 1.25rem; border-left: 3px solid ${leaveStatusColor};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <div style="color: #ccc; font-size: 0.95rem; font-weight: 500;">離開系統</div>
+                                    <label style="position: relative; display: inline-block; width: 44px; height: 22px; cursor: pointer;">
                                         <input type="checkbox" id="leave-toggle" ${leaveChecked} 
                                                onchange="toggleWelcome('leave', this.checked)"
                                                style="opacity: 0; width: 0; height: 0;">
-                                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
-                                                     background-color: ${settings.leave_enabled ? '#2563eb' : '#4b5563'}; 
-                                                     transition: 0.3s; border-radius: 24px;">
-                                            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: ${settings.leave_enabled ? '26px' : '3px'}; 
-                                                         bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%;"></span>
+                                        <span style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                                                     background: ${settings.leave_enabled ? '#333' : '#2b2b2b'}; 
+                                                     transition: 0.2s; border: 1px solid ${settings.leave_enabled ? '#2563eb' : '#444'};">
+                                            <span style="position: absolute; height: 14px; width: 14px; left: ${settings.leave_enabled ? '26px' : '4px'}; 
+                                                         top: 3px; background: ${settings.leave_enabled ? '#2563eb' : '#666'}; transition: 0.2s;"></span>
                                         </span>
                                     </label>
                                 </div>
                                 <div style="margin-bottom: 0.5rem;">
-                                    <span style="color: ${leaveStatusColor}; font-weight: 600;">${settings.leave_enabled ? '已開啟' : '已關閉'}</span>
+                                    <span style="color: ${leaveStatusColor}; font-weight: 500; font-size: 0.9rem;">${settings.leave_enabled ? '已開啟' : '已關閉'}</span>
                                 </div>
-                                <div style="color: #888; font-size: 0.85rem;">
-                                    頻道：${settings.leave_channel ? `<span style="color: #2563eb;">#${settings.leave_channel}</span>` : '未設定'}
+                                <div style="color: #666; font-size: 0.85rem;">
+                                    頻道：${settings.leave_channel ? `<span style="color: #888;">#${settings.leave_channel}</span>` : '<span style="color: #555;">未設定</span>'}
                                 </div>
                             </div>
                         </div>
@@ -484,11 +484,13 @@
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                padding: 1rem 1.5rem;
-                background: ${type === 'success' ? '#10b981' : '#dc2626'};
+                padding: 0.875rem 1.25rem;
+                background: ${type === 'success' ? '#2563eb' : '#dc2626'};
                 color: white;
-                border-radius: 4px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                font-size: 0.9rem;
+                font-weight: 500;
+                border-left: 3px solid ${type === 'success' ? '#1d4ed8' : '#b91c1c'};
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
                 z-index: 1000;
                 animation: slideIn 0.3s ease-out;
             `;
