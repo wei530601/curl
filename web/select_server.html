@@ -216,7 +216,7 @@
 </head>
 <body>
     <div class="navbar">
-        <div class="navbar-brand">🤖 Discord Bot Dashboard</div>
+        <div class="navbar-brand">Discord Bot Dashboard</div>
         <div class="navbar-user">
             <img src="{AVATAR_URL}" alt="Avatar" class="user-avatar">
             <span class="user-name">{USERNAME}</span>
@@ -238,7 +238,7 @@
         <div id="error" style="display: none;"></div>
         <div id="guilds" class="guilds-grid" style="display: none;"></div>
         <div id="no-guilds" class="no-guilds" style="display: none;">
-            <div class="no-guilds-icon">😢</div>
+            <div class="no-guilds-icon">沒有伺服器</div>
             <div class="no-guilds-title">沒有可管理的伺服器</div>
             <div class="no-guilds-text">
                 您需要在至少一個安裝了此機器人的伺服器中擁有管理權限才能使用控制台。
@@ -281,7 +281,7 @@
                             <div class="guild-icon">${icon}</div>
                             <div class="guild-info">
                                 <div class="guild-name">${guild.name}</div>
-                                <div class="guild-members">👥 ${guild.member_count.toLocaleString()} 位成員</div>
+                                <div class="guild-members">${guild.member_count.toLocaleString()} 位成員</div>
                             </div>
                         </div>
                         <span class="guild-badge">有管理權限</span>

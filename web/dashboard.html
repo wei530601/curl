@@ -184,7 +184,7 @@
 <body>
     <div class="navbar">
         <div class="navbar-brand">
-            🤖 Discord Bot Dashboard
+            Discord Bot Dashboard
             <span style="margin-left: 1rem; color: #888; font-size: 0.9rem;">/ {GUILD_NAME}</span>
         </div>
         <div class="navbar-user">
@@ -216,32 +216,32 @@
         </div>
 
         <div class="section">
-            <h2 class="section-title">📊 等級系統數據</h2>
+            <h2 class="section-title">等級系統數據</h2>
             <div id="levels-data" style="color: #888;">載入中...</div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">📅 簽到系統數據</h2>
+            <h2 class="section-title">簽到系統數據</h2>
             <div id="daily-data" style="color: #888;">載入中...</div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">👋 歡迎系統設定</h2>
+            <h2 class="section-title">歡迎系統設定</h2>
             <div id="welcome-data" style="color: #888;">載入中...</div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">🎂 生日系統數據</h2>
+            <h2 class="section-title">生日系統數據</h2>
             <div id="birthday-data" style="color: #888;">載入中...</div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">🎮 遊戲系統數據</h2>
+            <h2 class="section-title">遊戲系統數據</h2>
             <div id="game-data" style="color: #888;">載入中...</div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">📊 伺服器活躍度</h2>
+            <h2 class="section-title">伺服器活躍度</h2>
             <div id="statistics-data" style="color: #888;">載入中...</div>
         </div>
     </div>
@@ -358,8 +358,8 @@
                     }
                     
                     const settings = data.data;
-                    const welcomeStatus = settings.welcome_enabled ? '✅ 已開啟' : '❌ 已關閉';
-                    const leaveStatus = settings.leave_enabled ? '✅ 已開啟' : '❌ 已關閉';
+                    const welcomeStatus = settings.welcome_enabled ? '已開啟' : '已關閉';
+                    const leaveStatus = settings.leave_enabled ? '已開啟' : '已關閉';
                     
                     container.innerHTML = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -559,12 +559,12 @@
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div style="background: #1a1a1a; padding: 1rem;">
-                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">🔥 最熱門頻道</div>
+                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">最熱門頻道</div>
                                 <div style="color: #2563eb; font-weight: 600;">${topChannel}</div>
                                 <div style="color: #888; font-size: 0.85rem;">${topChannelCount.toLocaleString()} 條訊息</div>
                             </div>
                             <div style="background: #1a1a1a; padding: 1rem;">
-                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">🌟 最活躍時段</div>
+                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">最活躍時段</div>
                                 <div style="color: #2563eb; font-weight: 600;">${peakHour}</div>
                                 <div style="color: #888; font-size: 0.85rem;">${peakCount.toLocaleString()} 條訊息</div>
                             </div>
