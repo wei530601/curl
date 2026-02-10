@@ -27,7 +27,7 @@ class WebServer:
         self.app = web.Application()
         
         # 設定加密 session
-        secret_key = base64.urlsafe_b64encode(fernet.Fernet.generate_key())
+        secret_key = fernet.Fernet.generate_key()
         setup(self.app, EncryptedCookieStorage(secret_key))
         
         self.setup_routes()
