@@ -41,7 +41,9 @@ class WebServer:
         self.app.router.add_get('/dashboard', self.dashboard)
         self.app.router.add_get('/api/bot-info', self.api_bot_info)
         self.app.router.add_get('/api/servers', self.api_servers)
-        self.app.router.add_static('/static', 'web/static')
+        # 如果 static 目錄存在才添加靜態文件路由
+        if os.path.exists('web/static'):
+            self.app.router.add_static('/static', 'web/static')
     
     async def index(self, request):
         """主頁"""
