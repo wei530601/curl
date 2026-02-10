@@ -32,9 +32,12 @@ class WebServer:
         self.app.router.add_get('/', self.index)
         self.app.router.add_get('/login', self.login)
         self.app.router.add_get('/callback', self.callback)
-        self.app.router.add_get('/dashboard', self.dashboard)
+        self.app.router.add_get('/select-server', self.select_server)
+        self.app.router.add_get('/dashboard/{guild_id}', self.dashboard)
         self.app.router.add_get('/logout', self.logout)
-        self.app.router.add_get('/api/stats', self.api_stats)
+        self.app.router.add_get('/api/guilds', self.api_guilds)
+        self.app.router.add_get('/api/stats/{guild_id}', self.api_stats)
+        self.app.router.add_get('/api/data/{guild_id}/{data_type}', self.api_data)
     
     async def index(self, request):
         """主頁"""
@@ -42,8 +45,8 @@ class WebServer:
         user = session.get('user')
         
         if user:
-            # 已登錄，重定向到儀表板
-            raise web.HTTPFound('/dashboard')
+            # 已登錄，重定向到伺服器選擇頁面
+            raise web.HTTPFound('/select-server')
         
         with open('web/index.html', 'r', encoding='utf-8') as f:
             html = f.read()
@@ -101,17 +104,17 @@ class WebServer:
             }
             session['access_token'] = access_token
         
-        raise web.HTTPFound('/dashboard')
+        raise web.HTTPFound('/select-server')
     
-    async def dashboard(self, request):
-        """儀表板"""
+    async def select_server(self, request):
+        """伺服器選擇頁面"""
         session = await get_session(request)
         user = session.get('user')
         
         if not user:
             raise web.HTTPFound('/login')
         
-        with open('web/dashboard.html', 'r', encoding='utf-8') as f:
+        with open('web/select_server.html', 'r', encoding='utf-8') as f:
             html = f.read()
         
         # 替換用戶資訊
@@ -122,28 +125,158 @@ class WebServer:
         
         return web.Response(text=html, content_type='text/html')
     
-    async def logout(self, request):
-        """登出"""
-        session = await get_session(request)
-        session.clear()
-        raise web.HTTPFound('/')
-    
-    async def api_stats(self, request):
-        """API：統計數據"""
+    async def api_guilds(self, request):
+        """API：獲取用戶的伺服器列表"""
         session = await get_session(request)
         
         if not session.get('user'):
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
+        access_token = session.get('access_token')
+        
+        # 獲取用戶的 Discord 伺服器
+        async with ClientSession() as client_session:
+            headers = {'Authorization': f"Bearer {access_token}"}
+            async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
+                if resp.status != 200:
+                    return web.json_response({'error': 'Failed to fetch guilds'}, status=500)
+                user_guilds = await resp.json()
+        
+        # 獲取機器人所在的伺服器
+        bot_guild_ids = {str(guild.id) for guild in self.bot.guilds}
+        
+        # 過濾有管理權限且機器人也在的伺服器
+        accessible_guilds = []
+        for guild in user_guilds:
+            permissions = int(guild.get('permissions', 0))
+            guild_id = guild['id']
+            
+            # 檢查管理員權限或管理伺服器權限
+            if (permissions & 0x8 or permissions & 0x20) and guild_id in bot_guild_ids:
+                # 獲取伺服器圖標
+                icon_url = None
+                if guild.get('icon'):
+                    icon_url = f"https://cdn.discordapp.com/icons/{guild_id}/{guild['icon']}.png"
+                
+                # 獲取成員數量
+                bot_guild = self.bot.get_guild(int(guild_id))
+                member_count = bot_guild.member_count if bot_guild else 0
+                
+                accessible_guilds.append({
+                    'id': guild_id,
+                    'name': guild['name'],
+                    'icon': icon_url,
+                    'member_count': member_count
+                })
+        
+        return web.json_response({'guilds': accessible_guilds})
+    
+    async def api_stats(self, request):
+        """API：特定伺服器統計數據"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        # 獲取伺服器
+        guild = self.bot.get_guild(int(guild_id))
+        if not guild:
+            return web.json_response({'error': 'Guild not found'}, status=404)
+        
         # 收集統計數據
         stats = {
-            'guilds': len(self.bot.guilds),
-            'users': sum(guild.member_count for guild in self.bot.guilds),
-            'channels': sum(len(guild.channels) for guild in self.bot.guilds),
-            'uptime': str(self.bot.uptime) if hasattr(self.bot, 'uptime') else 'N/A'
+            'guild_name': guild.name,
+            'member_count': guild.member_count,
+            'channel_count': len(guild.channels),
+            'role_count': len(guild.roles),
+            'text_channels': len(guild.text_channels),
+            'voice_channels': len(guild.voice_channels),
+            'categories': len(guild.categories),
         }
         
         return web.json_response(stats)
+    
+    async def api_data(self, request):
+        """API：讀取伺服器數據文件"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        data_type = request.match_info.get('data_type')
+        
+        # 驗證數據類型
+        allowed_types = ['levels', 'welcome', 'reaction_roles', 'daily', 'birthdays', 'birthday_settings']
+        if data_type not in allowed_types:
+            return web.json_response({'error': 'Invalid data type'}, status=400)
+        
+        # 讀取數據文件
+        data_file = os.path.join('data', guild_id, f'{data_type}.json')
+        
+        if not os.path.exists(data_file):
+            return web.json_response({'data': {}, 'exists': False})
+        
+        try:
+            with open(data_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return web.json_response({'data': data, 'exists': True})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def dashboard(self, request):
+        """儀表板"""
+        session = await get_session(request)
+        user = session.get('user')
+        
+        if not user:
+            raise web.HTTPFound('/login')
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        # 驗證用戶是否有權限訪問此伺服器
+        access_token = session.get('access_token')
+        async with ClientSession() as client_session:
+            headers = {'Authorization': f"Bearer {access_token}"}
+            async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
+                if resp.status != 200:
+                    raise web.HTTPFound('/select-server')
+                user_guilds = await resp.json()
+        
+        # 檢查用戶是否在此伺服器且有管理權限
+        has_access = False
+        guild_name = "Unknown Server"
+        for guild in user_guilds:
+            if guild['id'] == guild_id:
+                permissions = int(guild.get('permissions', 0))
+                if permissions & 0x8 or permissions & 0x20:  # 管理員或管理伺服器
+                    has_access = True
+                    guild_name = guild['name']
+                    break
+        
+        if not has_access:
+            return web.Response(text="您沒有權限訪問此伺服器", status=403)
+        
+        with open('web/dashboard.html', 'r', encoding='utf-8') as f:
+            html = f.read()
+        
+        # 替換用戶資訊
+        avatar_url = f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.png" if user.get('avatar') else "https://cdn.discordapp.com/embed/avatars/0.png"
+        
+        html = html.replace('{USERNAME}', user['username'])
+        html = html.replace('{AVATAR_URL}', avatar_url)
+        html = html.replace('{GUILD_ID}', guild_id)
+        html = html.replace('{GUILD_NAME}', guild_name)
+        
+        return web.Response(text=html, content_type='text/html')
+    
+    async def logout(self, request):
+        """登出"""
+        session = await get_session(request)
+        session.clear()
+        raise web.HTTPFound('/')
     
     async def start(self):
         """啟動 Web 伺服器"""

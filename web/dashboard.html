@@ -183,8 +183,12 @@
 </head>
 <body>
     <div class="navbar">
-        <div class="navbar-brand">🤖 Discord Bot Dashboard</div>
+        <div class="navbar-brand">
+            🤖 Discord Bot Dashboard
+            <span style="margin-left: 1rem; color: #888; font-size: 0.9rem;">/ {GUILD_NAME}</span>
+        </div>
         <div class="navbar-user">
+            <a href="/select-server" style="color: #2563eb; text-decoration: none; margin-right: 1rem;">← 返回伺服器列表</a>
             <img src="{AVATAR_URL}" alt="Avatar" class="user-avatar">
             <span class="user-name">{USERNAME}</span>
             <a href="/logout" class="logout-btn">登出</a>
@@ -194,84 +198,233 @@
     <div class="container">
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-label">伺服器數量</div>
-                <div class="stat-value" id="guild-count">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">總用戶數</div>
-                <div class="stat-value" id="user-count">-</div>
+                <div class="stat-label">成員數量</div>
+                <div class="stat-value" id="member-count">-</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">頻道數量</div>
                 <div class="stat-value" id="channel-count">-</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">運行時間</div>
-                <div class="stat-value" id="uptime">-</div>
+                <div class="stat-label">身分組數量</div>
+                <div class="stat-value" id="role-count">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">文字頻道</div>
+                <div class="stat-value" id="text-channels">-</div>
             </div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">🎯 快速功能</h2>
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <div class="feature-icon">📊</div>
-                    <div class="feature-label">等級系統</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">👋</div>
-                    <div class="feature-label">歡迎系統</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">👆</div>
-                    <div class="feature-label">反應角色</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">📅</div>
-                    <div class="feature-label">簽到系統</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🎂</div>
-                    <div class="feature-label">生日提醒</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">📝</div>
-                    <div class="feature-label">日誌系統</div>
-                </div>
-            </div>
+            <h2 class="section-title">📊 等級系統數據</h2>
+            <div id="levels-data" style="color: #888;">載入中...</div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">📌 系統資訊</h2>
-            <p style="color: #888; margin-top: 1rem;">
-                機器人正在運行中，所有功能正常運作。<br>
-                使用 Discord 斜線指令（/）來操作各項功能。
-            </p>
+            <h2 class="section-title">📅 簽到系統數據</h2>
+            <div id="daily-data" style="color: #888;">載入中...</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">👋 歡迎系統設定</h2>
+            <div id="welcome-data" style="color: #888;">載入中...</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🎂 生日系統數據</h2>
+            <div id="birthday-data" style="color: #888;">載入中...</div>
         </div>
     </div>
 
     <script>
+        const GUILD_ID = '{GUILD_ID}';
+        
         // 載入統計數據
         async function loadStats() {
             try {
-                const response = await fetch('/api/stats');
+                const response = await fetch(`/api/stats/${GUILD_ID}`);
                 if (response.ok) {
                     const stats = await response.json();
-                    document.getElementById('guild-count').textContent = stats.guilds;
-                    document.getElementById('user-count').textContent = stats.users.toLocaleString();
-                    document.getElementById('channel-count').textContent = stats.channels.toLocaleString();
-                    document.getElementById('uptime').textContent = stats.uptime;
+                    document.getElementById('member-count').textContent = stats.member_count.toLocaleString();
+                    document.getElementById('channel-count').textContent = stats.channel_count;
+                    document.getElementById('role-count').textContent = stats.role_count;
+                    document.getElementById('text-channels').textContent = stats.text_channels;
                 }
             } catch (error) {
                 console.error('載入統計數據失敗:', error);
             }
         }
 
+        // 載入等級數據
+        async function loadLevels() {
+            try {
+                const response = await fetch(`/api/data/${GUILD_ID}/levels`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById('levels-data');
+                    
+                    if (!data.exists || Object.keys(data.data).length === 0) {
+                        container.innerHTML = '<p style="color: #888;">暫無等級數據</p>';
+                        return;
+                    }
+                    
+                    // 計算統計
+                    const users = Object.keys(data.data).length;
+                    const totalXP = Object.values(data.data).reduce((sum, user) => sum + (user.xp || 0), 0);
+                    const totalMessages = Object.values(data.data).reduce((sum, user) => sum + (user.messages || 0), 0);
+                    
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">註冊用戶</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${users}</div>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">總經驗值</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${totalXP.toLocaleString()}</div>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">總訊息數</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${totalMessages.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('levels-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
+        // 載入簽到數據
+        async function loadDaily() {
+            try {
+                const response = await fetch(`/api/data/${GUILD_ID}/daily`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById('daily-data');
+                    
+                    if (!data.exists || Object.keys(data.data).length === 0) {
+                        container.innerHTML = '<p style="color: #888;">暫無簽到數據</p>';
+                        return;
+                    }
+                    
+                    const users = Object.keys(data.data).length;
+                    const totalCheckins = Object.values(data.data).reduce((sum, user) => sum + (user.total_checkins || 0), 0);
+                    const totalPoints = Object.values(data.data).reduce((sum, user) => sum + (user.total_points || 0), 0);
+                    
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">簽到用戶</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${users}</div>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">總簽到次數</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${totalCheckins.toLocaleString()}</div>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">總積分</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${totalPoints.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('daily-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
+        // 載入歡迎系統設定
+        async function loadWelcome() {
+            try {
+                const response = await fetch(`/api/data/${GUILD_ID}/welcome`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById('welcome-data');
+                    
+                    if (!data.exists) {
+                        container.innerHTML = '<p style="color: #888;">尚未設定歡迎系統</p>';
+                        return;
+                    }
+                    
+                    const settings = data.data;
+                    const welcomeStatus = settings.welcome_enabled ? '✅ 已開啟' : '❌ 已關閉';
+                    const leaveStatus = settings.leave_enabled ? '✅ 已開啟' : '❌ 已關閉';
+                    
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="background: #1a1a1a; padding: 1rem;">
+                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">歡迎系統</div>
+                                <div style="margin-bottom: 0.5rem;">狀態：${welcomeStatus}</div>
+                                <div style="color: #888; font-size: 0.85rem;">
+                                    頻道：${settings.welcome_channel ? `<span style="color: #2563eb;">#${settings.welcome_channel}</span>` : '未設定'}
+                                </div>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 1rem;">
+                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">離開系統</div>
+                                <div style="margin-bottom: 0.5rem;">狀態：${leaveStatus}</div>
+                                <div style="color: #888; font-size: 0.85rem;">
+                                    頻道：${settings.leave_channel ? `<span style="color: #2563eb;">#${settings.leave_channel}</span>` : '未設定'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('welcome-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
+        // 載入生日數據
+        async function loadBirthdays() {
+            try {
+                const response = await fetch(`/api/data/${GUILD_ID}/birthdays`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById('birthday-data');
+                    
+                    if (!data.exists || Object.keys(data.data).length === 0) {
+                        container.innerHTML = '<p style="color: #888;">暫無生日記錄</p>';
+                        return;
+                    }
+                    
+                    const birthdays = Object.keys(data.data).length;
+                    const currentMonth = new Date().getMonth() + 1;
+                    const thisMonth = Object.values(data.data).filter(bd => bd.month === currentMonth).length;
+                    
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">已登記生日</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${birthdays}</div>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 1rem; border-left: 3px solid #2563eb;">
+                                <div style="color: #888; font-size: 0.9rem;">本月壽星</div>
+                                <div style="font-size: 1.5rem; color: #2563eb; font-weight: 600;">${thisMonth}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('birthday-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
         // 頁面載入時執行
         loadStats();
+        loadLevels();
+        loadDaily();
+        loadWelcome();
+        loadBirthdays();
         
         // 每30秒更新一次數據
-        setInterval(loadStats, 30000);
+        setInterval(() => {
+            loadStats();
+            loadLevels();
+            loadDaily();
+            loadWelcome();
+            loadBirthdays();
+        }, 30000);
     </script>
 </body>
 </html>
