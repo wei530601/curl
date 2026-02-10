@@ -216,11 +216,11 @@ class Leveling(commands.Cog):
         
         # 計算新等級
         new_level = self.calculate_level(data["xp"])
-        data["level"] =guild_id new_level
+        data["level"] = new_level
         data["last_message"] = now.isoformat()
         
         # 保存数据
-        self.save_data()
+        self.save_data(guild_id)
         
         # 如果升級了，發送訊息
         if new_level > old_level:
