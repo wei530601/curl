@@ -2,10 +2,12 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+from web.server import WebServer
 
 # 載入環境變數
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+WEB_PORT = int(os.getenv('WEB_PORT', 8080))  # 網頁端口，預設8080
 
 class MyBot(commands.Bot):
     def __init__(self):
@@ -18,8 +20,14 @@ class MyBot(commands.Bot):
             intents=intents,
             help_command=None
         )
+        
+        # 初始化網頁伺服器
+        self.web_server = WebServer(self, port=WEB_PORT)
     
     async def setup_hook(self):
+        # 啟動網頁控制台
+        await self.web_server.start()
+        
         # 載入所有cogs
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):

@@ -13,6 +13,7 @@
 - ✅ 伺服器資訊統計
 - ✅ 實用工具集合
 - ✅ 等級經驗系統
+- ✅ 網頁後台控制台（開發中）
 
 ## 已包含的Cogs
 
@@ -119,6 +120,21 @@ DISCORD_TOKEN=你的機器人token
 python bot.py
 ```
 
+機器人啟動後會自動：
+- 載入所有Cogs模組
+- 同步Slash指令
+- 啟動網頁後台控制台（預設端口：8080）
+
+**訪問網頁控制台**：
+- 本地訪問：http://localhost:8080
+- 網路訪問：http://你的IP:8080
+
+**自訂網頁端口**（可選）：
+在 `.env` 檔案中添加：
+```
+WEB_PORT=8080
+```
+
 ## 添加新的Cog
 
 在 `cogs/` 資料夾中創建新的Python檔案，例如 `cogs/mycog.py`:
@@ -159,6 +175,9 @@ async def setup(bot):
 ├── README.md          # 說明文档
 ├── levels.json        # 等級數據 (自動生成)
 ├── .gitignore         # Git忽略檔案
+├── web/               # 網頁控制台
+│   ├── server.py      # Web伺服器
+│   └── index.html     # 控制台首頁
 └── cogs/              # Cogs資料夾
     ├── general.py        # 一般指令
     ├── moderation.py     # 管理指令
