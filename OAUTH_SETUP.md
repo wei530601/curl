@@ -1,80 +1,85 @@
 # Discord OAuth2 設定指南
 
-## 如何獲取 Discord Client Secret
+## 步驟 1: 前往 Discord Developer Portal
 
-1. **前往 Discord Developer Portal**
-   - 訪問：https://discord.com/developers/applications
-   - 使用您的 Discord 帳號登入
+1. 訪問 https://discord.com/developers/applications
+2. 選擇你的機器人應用
+3. 點擊左側的 "OAuth2" → "General"
 
-2. **選擇您的應用程式**
-   - 點擊您的機器人應用程式
+## 步驟 2: 設定 Redirect URI
 
-3. **進入 OAuth2 設定**
-   - 在左側選單點擊「OAuth2」→「General」
+在 "Redirects" 區域添加：
+```
+http://localhost:8080/callback
+```
 
-4. **獲取 Client Secret**
-   - 找到「CLIENT SECRET」欄位
-   - 點擊「Copy」複製您的 Client Secret
-   - **重要：請妥善保管，不要公開分享**
+如果你使用不同的端口或域名，請相應修改。
 
-5. **設定重定向 URI**
-   - 在「Redirects」區域
-   - 添加：`http://localhost:8080/callback`
-   - 如果部署到伺服器，也添加：`https://your-domain.com/callback`
-   - 點擊「Save Changes」
+## 步驟 3: 獲取 Client ID 和 Client Secret
 
-6. **更新 .env 文件**
-   - 打開專案根目錄的 `.env` 文件
-   - 將複製的 Client Secret 貼到對應位置：
-   ```
-   DISCORD_CLIENT_SECRET=這裡貼上你的_client_secret
-   ```
+1. **Client ID**: 在 OAuth2 頁面頂部可以看到
+2. **Client Secret**: 點擊 "Reset Secret" 按鈕生成新的密鑰（只會顯示一次，請妥善保存）
 
-7. **（可選）OAuth2 URL Generator**
-   - 在「URL Generator」中可以看到授權範圍
-   - 確保勾選：`identify` 和 `guilds`
+## 步驟 4: 更新 .env 文件
 
-## 完整的 .env 配置範例
+將以下資訊填入 `.env` 文件：
 
 ```env
-DISCORD_TOKEN=你的機器人token
-LOG_CHANNEL_ID=日誌頻道ID
-WEB_PORT=8080
-
-# Discord OAuth2 設定
-DISCORD_CLIENT_ID=1470688452784820327
-DISCORD_CLIENT_SECRET=你的_client_secret
+DISCORD_CLIENT_ID=你的客戶端ID
+DISCORD_CLIENT_SECRET=你的客戶端密鑰
 DISCORD_REDIRECT_URI=http://localhost:8080/callback
 ```
 
-## 測試登入功能
+## 步驟 5: 生成 Session Secret
 
-1. 啟動機器人：`python bot.py`
-2. 打開瀏覽器訪問：`http://localhost:8080`
-3. 點擊「使用 Discord 登入」
-4. 授權後將自動跳轉到控制台
+在終端運行以下指令生成安全的 session 密鑰：
 
-## 常見問題
-
-**Q: 為什麼登入後顯示錯誤？**
-A: 請檢查：
-- Client Secret 是否正確
-- 重定向 URI 是否完全匹配（包括 http/https 和 port）
-- 機器人是否正在運行
-
-**Q: 如何部署到公網？**
-A: 修改 `.env` 中的 `DISCORD_REDIRECT_URI` 為您的域名：
-```
-DISCORD_REDIRECT_URI=https://your-domain.com/callback
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-**Q: 安全性問題？**
-A: 
-- 永遠不要公開 Client Secret
-- 使用 HTTPS（生產環境）
-- 定期更換 Client Secret（如果洩露）
+將輸出的字串填入 `.env` 文件：
 
-## 需要幫助？
+```env
+SESSION_SECRET=生成的密鑰
+```
 
-如有問題請查看 Discord 官方文檔：
-https://discord.com/developers/docs/topics/oauth2
+## 步驟 6: 啟動機器人
+
+```bash
+python bot.py
+```
+
+## 步驟 7: 訪問控制台
+
+打開瀏覽器訪問：
+```
+http://localhost:8080
+```
+
+點擊 "使用 Discord 登錄" 按鈕即可登入後台！
+
+## 安全提醒
+
+⚠️ **重要**: 
+- 永遠不要將 `.env` 文件提交到 Git
+- CLIENT_SECRET 和 SESSION_SECRET 必須保密
+- 如果密鑰洩露，請立即在 Discord Developer Portal 重置
+
+## 功能說明
+
+登錄後可以查看：
+- ✅ 機器人統計數據（伺服器數、用戶數、頻道數）
+- ✅ 運行時間
+- ✅ 快速功能入口
+
+## 疑難排解
+
+### 登錄失敗
+- 確認 CLIENT_ID 和 CLIENT_SECRET 正確
+- 確認 Redirect URI 完全匹配
+- 檢查瀏覽器控制台是否有錯誤
+
+### Session 失效
+- 確認 SESSION_SECRET 已設定
+- 重新生成 SESSION_SECRET 並重啟機器人

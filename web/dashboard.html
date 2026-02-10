@@ -15,6 +15,7 @@
             font-family: 'Segoe UI', 'Microsoft JhengHei', -apple-system, sans-serif;
             background: #1a1a1a;
             min-height: 100vh;
+            color: #fff;
         }
 
         .navbar {
@@ -27,12 +28,9 @@
         }
 
         .navbar-brand {
-            color: #ffffff;
             font-size: 1.2rem;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
+            color: #2563eb;
         }
 
         .navbar-user {
@@ -41,33 +39,26 @@
             gap: 1rem;
         }
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
         .user-avatar {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: #2563eb;
+            border: 2px solid #2563eb;
         }
 
         .user-name {
             color: #ccc;
-            font-size: 0.9rem;
         }
 
         .logout-btn {
             background: #dc2626;
-            color: #ffffff;
+            color: white;
             border: none;
             padding: 0.5rem 1rem;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.9rem;
             text-decoration: none;
+            font-size: 0.9rem;
         }
 
         .logout-btn:hover {
@@ -90,7 +81,6 @@
         .stat-card {
             background: #2b2b2b;
             padding: 1.5rem;
-            border-radius: 8px;
             border-left: 4px solid #2563eb;
         }
 
@@ -101,115 +91,102 @@
         }
 
         .stat-value {
-            color: #ffffff;
             font-size: 2rem;
             font-weight: 600;
+            color: #2563eb;
         }
 
         .section {
             background: #2b2b2b;
             padding: 2rem;
-            border-radius: 8px;
             margin-bottom: 2rem;
         }
 
         .section-title {
-            color: #ffffff;
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #333;
+            color: #fff;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.5rem;
         }
 
-        .server-grid {
+        .guild-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 1rem;
         }
 
-        .server-card {
+        .guild-item {
             background: #1a1a1a;
-            padding: 1.5rem;
-            border-radius: 6px;
+            padding: 1rem;
             display: flex;
             align-items: center;
             gap: 1rem;
-            transition: background 0.2s;
+            border: 1px solid #333;
         }
 
-        .server-card:hover {
-            background: #222;
-        }
-
-        .server-icon {
-            width: 48px;
-            height: 48px;
+        .guild-icon {
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            background: #2563eb;
+            background: #333;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
         }
 
-        .server-info {
+        .guild-info {
             flex: 1;
         }
 
-        .server-name {
-            color: #ffffff;
+        .guild-name {
             font-weight: 600;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.25rem;
         }
 
-        .server-members {
+        .guild-members {
             color: #888;
-            font-size: 0.85rem;
-        }
-
-        .admin-badge {
-            background: #2563eb;
-            color: #ffffff;
-            padding: 0.2rem 0.6rem;
-            border-radius: 3px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.9rem;
         }
 
         .loading {
             text-align: center;
-            color: #888;
             padding: 2rem;
+            color: #888;
         }
 
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #333;
-            border-top-color: #2563eb;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-left: 1rem;
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .feature-item {
+            background: #1a1a1a;
+            padding: 1rem;
+            border: 1px solid #333;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-label {
+            color: #ccc;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
     <div class="navbar">
-        <div class="navbar-brand">
-            <span>🤖</span>
-            <span>Discord 機器人控制台</span>
-        </div>
+        <div class="navbar-brand">🤖 Discord Bot Dashboard</div>
         <div class="navbar-user">
-            <div class="user-info">
-                <img id="userAvatar" class="user-avatar" alt="Avatar">
-                <span id="userName" class="user-name">載入中...</span>
-            </div>
+            <img src="{AVATAR_URL}" alt="Avatar" class="user-avatar">
+            <span class="user-name">{USERNAME}</span>
             <a href="/logout" class="logout-btn">登出</a>
         </div>
     </div>
@@ -218,98 +195,83 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">伺服器數量</div>
-                <div class="stat-value" id="serverCount">-</div>
+                <div class="stat-value" id="guild-count">-</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">總用戶數</div>
-                <div class="stat-value" id="userCount">-</div>
+                <div class="stat-value" id="user-count">-</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">機器人狀態</div>
-                <div class="stat-value" id="botStatus" style="font-size: 1.5rem; color: #10b981;">● 運行中</div>
+                <div class="stat-label">頻道數量</div>
+                <div class="stat-value" id="channel-count">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">運行時間</div>
+                <div class="stat-value" id="uptime">-</div>
             </div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">📊 您的伺服器</h2>
-            <div id="serverList" class="server-grid">
-                <div class="loading">載入伺服器列表</div>
+            <h2 class="section-title">🎯 快速功能</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-label">等級系統</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">👋</div>
+                    <div class="feature-label">歡迎系統</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">👆</div>
+                    <div class="feature-label">反應角色</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📅</div>
+                    <div class="feature-label">簽到系統</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎂</div>
+                    <div class="feature-label">生日提醒</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📝</div>
+                    <div class="feature-label">日誌系統</div>
+                </div>
             </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📌 系統資訊</h2>
+            <p style="color: #888; margin-top: 1rem;">
+                機器人正在運行中，所有功能正常運作。<br>
+                使用 Discord 斜線指令（/）來操作各項功能。
+            </p>
         </div>
     </div>
 
     <script>
-        // 載入機器人信息
-        fetch('/api/bot-info')
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('serverCount').textContent = data.server_count;
-                document.getElementById('userCount').textContent = data.user_count.toLocaleString();
-            })
-            .catch(err => console.error('Error loading bot info:', err));
-
-        // 載入伺服器列表
-        fetch('/api/servers')
-            .then(res => res.json())
-            .then(data => {
-                const serverList = document.getElementById('serverList');
-                
-                if (data.servers.length === 0) {
-                    serverList.innerHTML = '<div class="loading">您還沒有加入任何使用此機器人的伺服器</div>';
-                    return;
+        // 載入統計數據
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('guild-count').textContent = stats.guilds;
+                    document.getElementById('user-count').textContent = stats.users.toLocaleString();
+                    document.getElementById('channel-count').textContent = stats.channels.toLocaleString();
+                    document.getElementById('uptime').textContent = stats.uptime;
                 }
+            } catch (error) {
+                console.error('載入統計數據失敗:', error);
+            }
+        }
 
-                serverList.innerHTML = '';
-                
-                data.servers.forEach(server => {
-                    const card = document.createElement('div');
-                    card.className = 'server-card';
-                    
-                    const icon = document.createElement('div');
-                    icon.className = 'server-icon';
-                    
-                    if (server.icon) {
-                        const img = document.createElement('img');
-                        img.src = server.icon;
-                        img.style.width = '100%';
-                        img.style.height = '100%';
-                        img.style.borderRadius = '50%';
-                        icon.appendChild(img);
-                    } else {
-                        icon.textContent = server.name.charAt(0);
-                    }
-                    
-                    const info = document.createElement('div');
-                    info.className = 'server-info';
-                    
-                    const name = document.createElement('div');
-                    name.className = 'server-name';
-                    name.textContent = server.name;
-                    
-                    const members = document.createElement('div');
-                    members.className = 'server-members';
-                    members.textContent = `${server.member_count} 位成員`;
-                    
-                    info.appendChild(name);
-                    info.appendChild(members);
-                    
-                    card.appendChild(icon);
-                    card.appendChild(info);
-                    
-                    if (server.is_admin) {
-                        const badge = document.createElement('div');
-                        badge.className = 'admin-badge';
-                        badge.textContent = '管理員';
-                        card.appendChild(badge);
-                    }
-                    
-                    serverList.appendChild(card);
-                });
-            })
-            .catch(err => {
-                console.error('Error loading servers:', err);
-                document.getElementById('serverList').innerHTML = '<div class="loading">載入失敗</div>';
-            });
+        // 頁面載入時執行
+        loadStats();
+        
+        // 每30秒更新一次數據
+        setInterval(loadStats, 30000);
     </script>
 </body>
 </html>
