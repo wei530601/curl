@@ -209,7 +209,7 @@ class WebServer:
         data_type = request.match_info.get('data_type')
         
         # 驗證數據類型
-        allowed_types = ['levels', 'welcome', 'reaction_roles', 'daily', 'birthdays', 'birthday_settings']
+        allowed_types = ['levels', 'welcome', 'reaction_roles', 'daily', 'birthdays', 'birthday_settings', 'game_stats', 'statistics']
         if data_type not in allowed_types:
             return web.json_response({'error': 'Invalid data type'}, status=400)
         
