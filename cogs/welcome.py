@@ -41,9 +41,9 @@ class Welcome(commands.Cog):
             json.dump(self.settings.get(guild_id, {}), f, indent=2, ensure_ascii=False)
     
     def get_settings(self, guild_id: str):
-        """獲取伺服器設定"""
-        if guild_id not in self.settings:
-            self.settings[guild_id] = self.load_settings(guild_id)
+        """獲取伺服器設定（每次都重新載入以確保同步網頁修改）"""
+        # 每次都重新讀取檔案，確保與網頁修改同步
+        self.settings[guild_id] = self.load_settings(guild_id)
         return self.settings[guild_id]
     
     # 創建指令組
@@ -182,7 +182,8 @@ class Welcome(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         """成員加入事件"""
         guild_id = str(member.guild.id)
-        settings = self.get_settings(guild_id)
+        # 每次都從檔案重新讀取，確保同步網頁修改
+        settings = self.load_settings(guild_id)
         
         if not settings["welcome_enabled"] or not settings["welcome_channel"]:
             return
@@ -214,7 +215,8 @@ class Welcome(commands.Cog):
     async def on_member_remove(self, member: discord.Member):
         """成員離開事件"""
         guild_id = str(member.guild.id)
-        settings = self.get_settings(guild_id)
+        # 每次都從檔案重新讀取，確保同步網頁修改
+        settings = self.load_settings(guild_id)
         
         if not settings["leave_enabled"] or not settings["leave_channel"]:
             return
