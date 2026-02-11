@@ -500,9 +500,17 @@ class WebServer:
             if 'enabled' in data:
                 config['enabled'] = data['enabled']
             if 'trigger_channel_id' in data:
-                config['trigger_channel_id'] = data['trigger_channel_id']
+                # 將字符串 ID 轉換為整數（如果不為 None）
+                try:
+                    config['trigger_channel_id'] = int(data['trigger_channel_id']) if data['trigger_channel_id'] else None
+                except (ValueError, TypeError):
+                    config['trigger_channel_id'] = None
             if 'category_id' in data:
-                config['category_id'] = data['category_id']
+                # 將字符串 ID 轉換為整數（如果不為 None）
+                try:
+                    config['category_id'] = int(data['category_id']) if data['category_id'] else None
+                except (ValueError, TypeError):
+                    config['category_id'] = None
             if 'channel_name_format' in data:
                 config['channel_name_format'] = data['channel_name_format']
             if 'user_limit' in data:
