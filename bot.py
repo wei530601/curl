@@ -16,6 +16,7 @@ class MyBot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
+        intents.presences = True  # 需要此權限才能獲取成員在線狀態
         
         super().__init__(
             command_prefix='!',

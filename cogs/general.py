@@ -76,6 +76,30 @@ class HelpSelect(ui.Select):
                 emoji="🎂",
                 value="birthday"
             ),
+            discord.SelectOption(
+                label="遊戲系統",
+                description="查看遊戲系統指令",
+                emoji="🎯",
+                value="games"
+            ),
+            discord.SelectOption(
+                label="統計分析",
+                description="查看統計分析指令",
+                emoji="📊",
+                value="statistics"
+            ),
+            discord.SelectOption(
+                label="自定義命令",
+                description="查看自定義命令指令",
+                emoji="📝",
+                value="custom"
+            ),
+            discord.SelectOption(
+                label="臨時語音",
+                description="查看臨時語音系統指令",
+                emoji="🎤",
+                value="tempvoice"
+            ),
         ]
         super().__init__(
             placeholder="選擇要查看的指令分類...",
@@ -282,6 +306,111 @@ class HelpSelect(ui.Select):
                 inline=False
             )
         
+        elif self.values[0] == "games":
+            embed.title = "🎯 遊戲系統"
+            embed.description = "與機器人玩小遊戲並累積積分"
+            embed.add_field(
+                name="可用遊戲",
+                value=(
+                    "`/遊戲 猜數字` - 猜數字遊戲（7次機會）\n"
+                    "`/遊戲 猜拳` - 和機器人猜拳\n"
+                    "`/遊戲 21點` - 21點撲克遊戲"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="統計指令",
+                value=(
+                    "`/遊戲 統計` - 查看你的遊戲統計\n"
+                    "`/遊戲 排行榜` - 查看伺服器排行榜"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="獎勵",
+                value="勝利：+10 XP +5 積分 | 失敗：+3 XP +1 積分",
+                inline=False
+            )
+        
+        elif self.values[0] == "statistics":
+            embed.title = "📊 統計分析"
+            embed.description = "查看伺服器活躍度分析"
+            embed.add_field(
+                name="可用指令",
+                value=(
+                    "`/統計 活躍度` - 查看伺服器整體活躍度\n"
+                    "`/統計 熱門頻道` - 查看最活躍的頻道\n"
+                    "`/統計 我的統計` - 查看你的個人統計\n"
+                    "`/統計 活躍排行` - 查看活躍用戶排行榜\n"
+                    "`/統計 時段分析` - 查看各時段活躍度"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="追蹤內容",
+                value="訊息數量、頻道活躍度、用戶活動、時段分布",
+                inline=False
+            )
+        
+        elif self.values[0] == "custom":
+            embed.title = "📝 自定義命令系統"
+            embed.description = "創建簡單的文字回覆命令"
+            embed.add_field(
+                name="管理員指令",
+                value=(
+                    "`/自定義 添加` - 添加新的自定義命令\n"
+                    "`/自定義 編輯` - 編輯現有命令\n"
+                    "`/自定義 刪除` - 刪除命令\n"
+                    "`/自定義 列表` - 查看所有自定義命令"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="使用方式",
+                value="在聊天中輸入 `!命令名稱` 觸發自定義命令",
+                inline=False
+            )
+            embed.add_field(
+                name="網頁管理",
+                value="可在網頁控制台直接創建和管理命令",
+                inline=False
+            )
+        
+        elif self.values[0] == "tempvoice":
+            embed.title = "🎤 臨時語音頻道系統"
+            embed.description = "自動創建和管理臨時語音頻道"
+            embed.add_field(
+                name="管理員指令",
+                value=(
+                    "`/臨時語音 設定` - 設定觸發頻道和分類\n"
+                    "`/臨時語音 停用` - 停用系統\n"
+                    "`/臨時語音 狀態` - 查看系統狀態"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="用戶指令",
+                value=(
+                    "`/臨時語音 限制人數` - 設定頻道人數上限\n"
+                    "`/臨時語音 重命名` - 重命名你的臨時頻道"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="使用方式",
+                value=(
+                    "1. 加入設定的觸發頻道\n"
+                    "2. 系統自動創建專屬語音頻道\n"
+                    "3. 所有人離開後自動刪除"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="網頁管理",
+                value="可在網頁控制台配置觸發頻道和頻道名稱格式",
+                inline=False
+            )
+        
         await interaction.response.edit_message(embed=embed, view=self.view)
 
 class HelpView(ui.View):
@@ -422,7 +551,9 @@ class General(commands.Cog):
                 "📅 簽到系統\n"
                 "🎂 生日系統\n"
                 "🎯 遊戲系統\n"
-                "📊 統計分析"
+                "📊 統計分析\\n"
+                "📝 自定義命令\\n"
+                "🎤 臨時語音"
             ),
             color=discord.Color.from_rgb(37, 99, 235),
             timestamp=discord.utils.utcnow()

@@ -2,6 +2,7 @@ from aiohttp import web, ClientSession
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
+import discord
 import os
 import base64
 import json
@@ -39,6 +40,17 @@ class WebServer:
         self.app.router.add_get('/api/stats/{guild_id}', self.api_stats)
         self.app.router.add_get('/api/data/{guild_id}/{data_type}', self.api_data)
         self.app.router.add_post('/api/welcome/{guild_id}/toggle', self.api_toggle_welcome)
+        
+        # 自定義命令 API
+        self.app.router.add_get('/api/custom-commands/{guild_id}', self.api_get_custom_commands)
+        self.app.router.add_post('/api/custom-commands/{guild_id}', self.api_add_custom_command)
+        self.app.router.add_put('/api/custom-commands/{guild_id}/{command_name}', self.api_edit_custom_command)
+        self.app.router.add_delete('/api/custom-commands/{guild_id}/{command_name}', self.api_delete_custom_command)
+        
+        # 臨時語音頻道 API
+        self.app.router.add_get('/api/temp-voice/{guild_id}', self.api_get_temp_voice_config)
+        self.app.router.add_post('/api/temp-voice/{guild_id}', self.api_update_temp_voice_config)
+        self.app.router.add_get('/api/channels/{guild_id}', self.api_get_channels)
     
     async def index(self, request):
         """主頁"""
@@ -278,6 +290,273 @@ class WebServer:
                 'settings': settings
             })
             
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_get_custom_commands(self, request):
+        """API：獲取自定義命令列表"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        data_file = os.path.join('data', guild_id, 'custom_commands.json')
+        
+        if not os.path.exists(data_file):
+            return web.json_response({'commands': {}})
+        
+        try:
+            with open(data_file, 'r', encoding='utf-8') as f:
+                commands = json.load(f)
+            return web.json_response({'commands': commands})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_add_custom_command(self, request):
+        """API：添加自定義命令"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            data = await request.json()
+            command_name = data.get('name')
+            response = data.get('response')
+            
+            if not command_name or not response:
+                return web.json_response({'error': 'Missing name or response'}, status=400)
+            
+            data_file = os.path.join('data', guild_id, 'custom_commands.json')
+            os.makedirs(os.path.dirname(data_file), exist_ok=True)
+            
+            # 讀取現有命令
+            commands = {}
+            if os.path.exists(data_file):
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    commands = json.load(f)
+            
+            # 檢查命令是否已存在
+            if command_name in commands:
+                return web.json_response({'error': 'Command already exists'}, status=400)
+            
+            # 添加命令
+            from datetime import datetime
+            commands[command_name] = {
+                'response': response,
+                'created_by': session.get('user')['id'],
+                'created_at': datetime.utcnow().isoformat(),
+                'uses': 0
+            }
+            
+            # 儲存
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(commands, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'commands': commands})
+        
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_edit_custom_command(self, request):
+        """API：編輯自定義命令"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        command_name = request.match_info.get('command_name')
+        
+        try:
+            data = await request.json()
+            new_response = data.get('response')
+            
+            if not new_response:
+                return web.json_response({'error': 'Missing response'}, status=400)
+            
+            data_file = os.path.join('data', guild_id, 'custom_commands.json')
+            
+            if not os.path.exists(data_file):
+                return web.json_response({'error': 'Commands file not found'}, status=404)
+            
+            with open(data_file, 'r', encoding='utf-8') as f:
+                commands = json.load(f)
+            
+            if command_name not in commands:
+                return web.json_response({'error': 'Command not found'}, status=404)
+            
+            # 更新命令
+            from datetime import datetime
+            commands[command_name]['response'] = new_response
+            commands[command_name]['edited_by'] = session.get('user')['id']
+            commands[command_name]['edited_at'] = datetime.utcnow().isoformat()
+            
+            # 儲存
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(commands, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'commands': commands})
+        
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_delete_custom_command(self, request):
+        """API：刪除自定義命令"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        command_name = request.match_info.get('command_name')
+        
+        try:
+            data_file = os.path.join('data', guild_id, 'custom_commands.json')
+            
+            if not os.path.exists(data_file):
+                return web.json_response({'error': 'Commands file not found'}, status=404)
+            
+            with open(data_file, 'r', encoding='utf-8') as f:
+                commands = json.load(f)
+            
+            if command_name not in commands:
+                return web.json_response({'error': 'Command not found'}, status=404)
+            
+            # 刪除命令
+            del commands[command_name]
+            
+            # 儲存
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(commands, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'commands': commands})
+        
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_get_temp_voice_config(self, request):
+        """API：獲取臨時語音配置"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        data_file = os.path.join('data', guild_id, 'temp_voice.json')
+        
+        if not os.path.exists(data_file):
+            return web.json_response({
+                'config': {
+                    'enabled': False,
+                    'trigger_channel_id': None,
+                    'category_id': None,
+                    'channel_name_format': '{username} 的頻道',
+                    'user_limit': 0,
+                    'default_bitrate': 64000
+                }
+            })
+        
+        try:
+            with open(data_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            return web.json_response({'config': config})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_update_temp_voice_config(self, request):
+        """API：更新臨時語音配置"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            data = await request.json()
+            
+            data_file = os.path.join('data', guild_id, 'temp_voice.json')
+            os.makedirs(os.path.dirname(data_file), exist_ok=True)
+            
+            # 讀取現有配置
+            config = {
+                'enabled': False,
+                'trigger_channel_id': None,
+                'category_id': None,
+                'channel_name_format': '{username} 的頻道',
+                'user_limit': 0,
+                'default_bitrate': 64000
+            }
+            
+            if os.path.exists(data_file):
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            
+            # 更新配置
+            if 'enabled' in data:
+                config['enabled'] = data['enabled']
+            if 'trigger_channel_id' in data:
+                config['trigger_channel_id'] = data['trigger_channel_id']
+            if 'category_id' in data:
+                config['category_id'] = data['category_id']
+            if 'channel_name_format' in data:
+                config['channel_name_format'] = data['channel_name_format']
+            if 'user_limit' in data:
+                config['user_limit'] = data['user_limit']
+            if 'default_bitrate' in data:
+                config['default_bitrate'] = data['default_bitrate']
+            
+            # 儲存
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'config': config})
+        
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_get_channels(self, request):
+        """API：獲取伺服器頻道列表"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            guild = self.bot.get_guild(int(guild_id))
+            
+            if not guild:
+                return web.json_response({'error': 'Guild not found'}, status=404)
+            
+            # 獲取語音頻道和分類
+            voice_channels = []
+            categories = []
+            
+            for channel in guild.channels:
+                if isinstance(channel, discord.VoiceChannel):
+                    voice_channels.append({
+                        'id': str(channel.id),
+                        'name': channel.name,
+                        'position': channel.position
+                    })
+                elif isinstance(channel, discord.CategoryChannel):
+                    categories.append({
+                        'id': str(channel.id),
+                        'name': channel.name,
+                        'position': channel.position
+                    })
+            
+            return web.json_response({
+                'voice_channels': sorted(voice_channels, key=lambda x: x['position']),
+                'categories': sorted(categories, key=lambda x: x['position'])
+            })
+        
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
     
