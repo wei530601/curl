@@ -40,6 +40,7 @@ class WebServer:
         self.app.router.add_get('/api/stats/{guild_id}', self.api_stats)
         self.app.router.add_get('/api/data/{guild_id}/{data_type}', self.api_data)
         self.app.router.add_post('/api/welcome/{guild_id}/toggle', self.api_toggle_welcome)
+        self.app.router.add_post('/api/welcome/{guild_id}/update', self.api_update_welcome)
         
         # 自定義命令 API
         self.app.router.add_get('/api/custom-commands/{guild_id}', self.api_get_custom_commands)
@@ -303,6 +304,59 @@ class WebServer:
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
     
+    async def api_update_welcome(self, request):
+        """API：更新歡迎系統設定"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            # 獲取請求數據
+            data = await request.json()
+            
+            # 讀取現有設定
+            data_file = os.path.join('data', guild_id, 'welcome.json')
+            
+            if not os.path.exists(data_file):
+                # 創建預設設定
+                os.makedirs(os.path.dirname(data_file), exist_ok=True)
+                settings = {
+                    'welcome_enabled': False,
+                    'leave_enabled': False,
+                    'welcome_channel': None,
+                    'leave_channel': None,
+                    'welcome_message': '歡迎 {user} 加入 {server}！',
+                    'leave_message': '{username} 離開了伺服器'
+                }
+            else:
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+            
+            # 更新設定（只更新提供的字段）
+            if 'welcome_channel' in data:
+                settings['welcome_channel'] = data['welcome_channel']
+            if 'leave_channel' in data:
+                settings['leave_channel'] = data['leave_channel']
+            if 'welcome_message' in data:
+                settings['welcome_message'] = data['welcome_message']
+            if 'leave_message' in data:
+                settings['leave_message'] = data['leave_message']
+            
+            # 儲存設定
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({
+                'success': True,
+                'settings': settings
+            })
+            
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
     async def api_get_custom_commands(self, request):
         """API：獲取自定義命令列表"""
         session = await get_session(request)
@@ -552,12 +606,19 @@ class WebServer:
             if not guild:
                 return web.json_response({'error': 'Guild not found'}, status=404)
             
-            # 獲取語音頻道和分類
+            # 獲取各類頻道
+            text_channels = []
             voice_channels = []
             categories = []
             
             for channel in guild.channels:
-                if isinstance(channel, discord.VoiceChannel):
+                if isinstance(channel, discord.TextChannel):
+                    text_channels.append({
+                        'id': str(channel.id),
+                        'name': channel.name,
+                        'position': channel.position
+                    })
+                elif isinstance(channel, discord.VoiceChannel):
                     voice_channels.append({
                         'id': str(channel.id),
                         'name': channel.name,
@@ -571,6 +632,7 @@ class WebServer:
                     })
             
             return web.json_response({
+                'text_channels': sorted(text_channels, key=lambda x: x['position']),
                 'voice_channels': sorted(voice_channels, key=lambda x: x['position']),
                 'categories': sorted(categories, key=lambda x: x['position'])
             })
