@@ -212,6 +212,71 @@
             border-radius: 4px;
             margin-bottom: 1rem;
         }
+
+        /* 移動端響應式樣式 */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+
+            .navbar-brand {
+                font-size: 1rem;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            .user-name {
+                display: none;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .guilds-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .guild-card {
+                padding: 1rem;
+            }
+
+            .guild-icon {
+                width: 50px;
+                height: 50px;
+            }
+
+            .guild-name {
+                font-size: 1rem;
+            }
+
+            .logout-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-brand {
+                font-size: 0.9rem;
+            }
+
+            .header h1 {
+                font-size: 1.3rem;
+            }
+        }
     </style>
 </head>
 <body>

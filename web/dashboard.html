@@ -65,6 +65,52 @@
             background: #b91c1c;
         }
 
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px;
+            background: none;
+            border: none;
+            margin-right: 1rem;
+        }
+
+        .hamburger span {
+            width: 24px;
+            height: 3px;
+            background: #fff;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(6px, 6px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
         .main-layout {
             display: flex;
             height: calc(100vh - 73px);
@@ -76,6 +122,8 @@
             border-right: 1px solid #333;
             overflow-y: auto;
             flex-shrink: 0;
+            transition: transform 0.3s ease;
+            z-index: 999;
         }
 
         .sidebar-item {
@@ -291,10 +339,92 @@
                 opacity: 0;
             }
         }
+
+        /* 移動端響應式樣式 */
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+
+            .navbar {
+                padding: 1rem;
+            }
+
+            .navbar-brand {
+                font-size: 1rem;
+            }
+
+            .navbar-brand span {
+                display: none;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            .user-name {
+                display: none;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 73px;
+                left: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+                box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .content {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+
+            .stat-card {
+                padding: 1rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            .section {
+                padding: 1rem;
+            }
+
+            .section-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .logout-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="navbar">
+        <button class="hamburger" onclick="toggleSidebar()" aria-label="切換菜單">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
         <div class="navbar-brand">
             Discord Bot Dashboard
             <span style="margin-left: 1rem; color: #888; font-size: 0.9rem;">/ {GUILD_NAME}</span>
@@ -307,8 +437,10 @@
         </div>
     </div>
 
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <div class="main-layout">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-section">數據總覽</div>
             <div class="sidebar-item active" onclick="showSection('dashboard')">
                 儀表板
@@ -456,6 +588,17 @@
     <script>
         const GUILD_ID = '{GUILD_ID}';
         
+        // 漢堡菜單切換函數
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const hamburger = document.querySelector('.hamburger');
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+        
         // 側邊欄切換函數
         function showSection(sectionName) {
             // 隱藏所有section
@@ -478,6 +621,17 @@
             
             // 添加active狀態到點擊的項目
             event.currentTarget.classList.add('active');
+            
+            // 移動端：切換頁面後自動關閉側邊欄
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                const hamburger = document.querySelector('.hamburger');
+                
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                hamburger.classList.remove('active');
+            }
         }
         
         // 載入統計數據
