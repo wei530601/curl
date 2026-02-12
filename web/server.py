@@ -51,6 +51,16 @@ class WebServer:
         self.app.router.add_get('/api/temp-voice/{guild_id}', self.api_get_temp_voice_config)
         self.app.router.add_post('/api/temp-voice/{guild_id}', self.api_update_temp_voice_config)
         self.app.router.add_get('/api/channels/{guild_id}', self.api_get_channels)
+        
+        # 警告系統 API
+        self.app.router.add_get('/api/warnings/{guild_id}', self.api_get_warnings)
+        self.app.router.add_delete('/api/warnings/{guild_id}/{user_id}', self.api_clear_warnings)
+        self.app.router.add_delete('/api/warnings/{guild_id}/{user_id}/latest', self.api_remove_latest_warning)
+        
+        # 成就系統 API
+        self.app.router.add_get('/api/achievements/{guild_id}', self.api_get_achievements)
+        self.app.router.add_post('/api/achievements/{guild_id}/{user_id}/{achievement_id}', self.api_grant_achievement)
+        self.app.router.add_delete('/api/achievements/{guild_id}/{user_id}/{achievement_id}', self.api_revoke_achievement)
     
     async def index(self, request):
         """主頁"""
@@ -619,6 +629,232 @@ class WebServer:
         session = await get_session(request)
         session.clear()
         raise web.HTTPFound('/')
+    
+    async def api_get_warnings(self, request):
+        """獲取警告數據"""
+        guild_id = request.match_info['guild_id']
+        
+        try:
+            file_path = f'./data/{guild_id}/warnings.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'warnings': {}})
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                warnings_data = json.load(f)
+            
+            # 獲取用戶信息
+            guild = self.bot.get_guild(int(guild_id))
+            enriched_warnings = {}
+            
+            if guild:
+                for user_id, warnings in warnings_data.items():
+                    member = guild.get_member(int(user_id))
+                    enriched_warnings[user_id] = {
+                        'username': member.name if member else '未知用戶',
+                        'display_name': member.display_name if member else '未知用戶',
+                        'avatar': str(member.display_avatar.url) if member else None,
+                        'warnings': warnings,
+                        'warn_count': len(warnings)
+                    }
+            else:
+                enriched_warnings = {uid: {'username': '未知', 'warnings': warns, 'warn_count': len(warns)} 
+                                   for uid, warns in warnings_data.items()}
+            
+            return web.json_response({'warnings': enriched_warnings})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_clear_warnings(self, request):
+        """清除用戶所有警告"""
+        guild_id = request.match_info['guild_id']
+        user_id = request.match_info['user_id']
+        
+        try:
+            file_path = f'./data/{guild_id}/warnings.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'success': True, 'message': '沒有警告記錄'})
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                warnings_data = json.load(f)
+            
+            if user_id in warnings_data:
+                warn_count = len(warnings_data[user_id])
+                del warnings_data[user_id]
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(warnings_data, f, ensure_ascii=False, indent=4)
+                
+                return web.json_response({
+                    'success': True, 
+                    'message': f'已清除 {warn_count} 次警告'
+                })
+            else:
+                return web.json_response({'success': True, 'message': '沒有警告記錄'})
+                
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_remove_latest_warning(self, request):
+        """移除用戶最近一次警告"""
+        guild_id = request.match_info['guild_id']
+        user_id = request.match_info['user_id']
+        
+        try:
+            file_path = f'./data/{guild_id}/warnings.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'success': False, 'message': '沒有警告記錄'})
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                warnings_data = json.load(f)
+            
+            if user_id in warnings_data and len(warnings_data[user_id]) > 0:
+                removed = warnings_data[user_id].pop()
+                
+                if len(warnings_data[user_id]) == 0:
+                    del warnings_data[user_id]
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(warnings_data, f, ensure_ascii=False, indent=4)
+                
+                return web.json_response({
+                    'success': True, 
+                    'message': f'已移除警告',
+                    'removed_warning': removed
+                })
+            else:
+                return web.json_response({'success': False, 'message': '沒有警告記錄'})
+                
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_get_achievements(self, request):
+        """獲取成就數據"""
+        guild_id = request.match_info['guild_id']
+        
+        try:
+            file_path = f'./data/{guild_id}/achievements.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'achievements': {}})
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                achievements_data = json.load(f)
+            
+            # 獲取用戶信息和成就定義
+            guild = self.bot.get_guild(int(guild_id))
+            achievements_cog = self.bot.get_cog('Achievements')
+            
+            enriched_achievements = {}
+            
+            if guild and achievements_cog:
+                achievement_defs = achievements_cog.achievement_definitions
+                
+                for user_id, user_achievements in achievements_data.items():
+                    member = guild.get_member(int(user_id))
+                    
+                    # 豐富成就信息
+                    enriched_list = []
+                    for ach_id in user_achievements:
+                        if ach_id in achievement_defs:
+                            ach_def = achievement_defs[ach_id]
+                            enriched_list.append({
+                                'id': ach_id,
+                                'name': ach_def['name'],
+                                'description': ach_def['description'],
+                                'rarity': ach_def['rarity'],
+                                'category': ach_def['category']
+                            })
+                    
+                    enriched_achievements[user_id] = {
+                        'username': member.name if member else '未知用戶',
+                        'display_name': member.display_name if member else '未知用戶',
+                        'avatar': str(member.display_avatar.url) if member else None,
+                        'achievements': enriched_list,
+                        'achievement_count': len(enriched_list)
+                    }
+            else:
+                enriched_achievements = {uid: {'username': '未知', 'achievements': achs, 'achievement_count': len(achs)} 
+                                        for uid, achs in achievements_data.items()}
+            
+            return web.json_response({'achievements': enriched_achievements})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_grant_achievement(self, request):
+        """授予成就"""
+        guild_id = request.match_info['guild_id']
+        user_id = request.match_info['user_id']
+        achievement_id = request.match_info['achievement_id']
+        
+        try:
+            file_path = f'./data/{guild_id}/achievements.json'
+            
+            # 載入數據
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    achievements_data = json.load(f)
+            else:
+                achievements_data = {}
+            
+            # 添加成就
+            if user_id not in achievements_data:
+                achievements_data[user_id] = []
+            
+            if achievement_id not in achievements_data[user_id]:
+                achievements_data[user_id].append(achievement_id)
+                
+                # 保存
+                os.makedirs(f'./data/{guild_id}', exist_ok=True)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(achievements_data, f, ensure_ascii=False, indent=4)
+                
+                return web.json_response({
+                    'success': True, 
+                    'message': '成就已授予'
+                })
+            else:
+                return web.json_response({
+                    'success': False, 
+                    'message': '用戶已擁有此成就'
+                })
+                
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_revoke_achievement(self, request):
+        """撤銷成就"""
+        guild_id = request.match_info['guild_id']
+        user_id = request.match_info['user_id']
+        achievement_id = request.match_info['achievement_id']
+        
+        try:
+            file_path = f'./data/{guild_id}/achievements.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'success': False, 'message': '沒有成就記錄'})
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                achievements_data = json.load(f)
+            
+            if user_id in achievements_data and achievement_id in achievements_data[user_id]:
+                achievements_data[user_id].remove(achievement_id)
+                
+                if len(achievements_data[user_id]) == 0:
+                    del achievements_data[user_id]
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(achievements_data, f, ensure_ascii=False, indent=4)
+                
+                return web.json_response({
+                    'success': True, 
+                    'message': '成就已撤銷'
+                })
+            else:
+                return web.json_response({
+                    'success': False, 
+                    'message': '用戶沒有此成就'
+                })
+                
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
     
     async def start(self):
         """啟動 Web 伺服器"""

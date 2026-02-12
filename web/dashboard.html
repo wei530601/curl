@@ -180,6 +180,42 @@
             font-size: 0.9rem;
         }
 
+        .btn {
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -275,6 +311,16 @@
         <div class="section">
             <h2 class="section-title">臨時語音頻道設定</h2>
             <div id="temp-voice-data" style="color: #888;">載入中...</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">⚠️ 警告系統管理</h2>
+            <div id="warnings-data" style="color: #888;">載入中...</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🏆 成就系統管理</h2>
+            <div id="achievements-data" style="color: #888;">載入中...</div>
         </div>
     </div>
 
@@ -1034,6 +1080,215 @@
             }
         }
 
+        // ===== 警告系統管理 =====
+        async function loadWarnings() {
+            try {
+                const response = await fetch('/api/warnings/' + GUILD_ID);
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('warnings-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+                    return;
+                }
+                
+                const warnings = data.warnings;
+                const userCount = Object.keys(warnings).length;
+                
+                if (userCount === 0) {
+                    document.getElementById('warnings-data').innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #888;">
+                            <p>✅ 目前沒有任何警告記錄</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = `
+                    <div style="margin-bottom: 1rem; color: #888;">
+                        共有 ${userCount} 位用戶有警告記錄
+                    </div>
+                    <div style="max-height: 600px; overflow-y: auto;">
+                `;
+                
+                // 按警告次數排序
+                const sortedUsers = Object.entries(warnings).sort((a, b) => b[1].warn_count - a[1].warn_count);
+                
+                for (const [userId, userData] of sortedUsers) {
+                    const warnCount = userData.warn_count;
+                    const warnColor = warnCount >= 5 ? '#dc2626' : warnCount >= 3 ? '#f59e0b' : '#eab308';
+                    
+                    html += `
+                        <div style="background: #1a1a1a; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border-left: 4px solid ${warnColor};">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    ${userData.avatar ? `<img src="${userData.avatar}" style="width: 40px; height: 40px; border-radius: 50%;">` : ''}
+                                    <div>
+                                        <div style="font-weight: 600; color: #fff;">${userData.display_name || userData.username}</div>
+                                        <div style="color: #888; font-size: 0.9rem;">警告次數: <span style="color: ${warnColor}; font-weight: 600;">${warnCount}</span></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button onclick="removeLatestWarning('${userId}')" class="btn btn-warning" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                        移除最新
+                                    </button>
+                                    <button onclick="clearWarnings('${userId}')" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                        清除全部
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.5rem; border-top: 1px solid #333; padding-top: 0.5rem;">
+                    `;
+                    
+                    // 顯示最近5條警告
+                    const recentWarnings = userData.warnings.slice(-5).reverse();
+                    for (const warn of recentWarnings) {
+                        const timestamp = new Date(warn.timestamp).toLocaleString('zh-TW');
+                        html += `
+                            <div style="padding: 0.5rem; background: #2b2b2b; margin-bottom: 0.3rem; border-radius: 4px; font-size: 0.9rem;">
+                                <div style="color: #eab308;">理由: ${warn.reason}</div>
+                                <div style="color: #888; font-size: 0.85rem;">操作者: ${warn.moderator_name} | ${timestamp}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    if (userData.warnings.length > 5) {
+                        html += `<div style="color: #888; text-align: center; font-size: 0.85rem;">還有 ${userData.warnings.length - 5} 條歷史記錄...</div>`;
+                    }
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                document.getElementById('warnings-data').innerHTML = html;
+            } catch (error) {
+                console.error('載入警告數據失敗:', error);
+                document.getElementById('warnings-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
+        async function removeLatestWarning(userId) {
+            if (!confirm('確定要移除此用戶的最新警告嗎？')) return;
+            
+            try {
+                const res = await fetch(`/api/warnings/${GUILD_ID}/${userId}/latest`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    loadWarnings();
+                } else {
+                    showNotification(data.message || '操作失敗', 'error');
+                }
+            } catch (error) {
+                showNotification('操作失敗', 'error');
+            }
+        }
+
+        async function clearWarnings(userId) {
+            if (!confirm('確定要清除此用戶的所有警告嗎？此操作無法撤銷！')) return;
+            
+            try {
+                const res = await fetch(`/api/warnings/${GUILD_ID}/${userId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    loadWarnings();
+                } else {
+                    showNotification(data.message || '操作失敗', 'error');
+                }
+            } catch (error) {
+                showNotification('操作失敗', 'error');
+            }
+        }
+
+        // ===== 成就系統管理 =====
+        async function loadAchievements() {
+            try {
+                const response = await fetch('/api/achievements/' + GUILD_ID);
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('achievements-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+                    return;
+                }
+                
+                const achievements = data.achievements;
+                const userCount = Object.keys(achievements).length;
+                
+                if (userCount === 0) {
+                    document.getElementById('achievements-data').innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #888;">
+                            <p>目前沒有用戶解鎖成就</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = `
+                    <div style="margin-bottom: 1rem; color: #888;">
+                        共有 ${userCount} 位用戶解鎖了成就
+                    </div>
+                    <div style="max-height: 600px; overflow-y: auto;">
+                `;
+                
+                // 按成就數量排序
+                const sortedUsers = Object.entries(achievements).sort((a, b) => b[1].achievement_count - a[1].achievement_count);
+                
+                for (const [userId, userData] of sortedUsers) {
+                    const achievementCount = userData.achievement_count;
+                    
+                    html += `
+                        <div style="background: #1a1a1a; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border-left: 4px solid #2563eb;">
+                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                                ${userData.avatar ? `<img src="${userData.avatar}" style="width: 40px; height: 40px; border-radius: 50%;">` : ''}
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #fff;">${userData.display_name || userData.username}</div>
+                                    <div style="color: #2563eb; font-size: 0.9rem;">🏆 已解鎖 ${achievementCount} 個成就</div>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 0.5rem;">
+                    `;
+                    
+                    // 顯示成就
+                    for (const ach of userData.achievements) {
+                        const rarityColors = {
+                            '普通': '#888',
+                            '稀有': '#3b82f6',
+                            '史詩': '#a855f7',
+                            '傳奇': '#eab308'
+                        };
+                        const rarityColor = rarityColors[ach.rarity] || '#888';
+                        
+                        html += `
+                            <div style="background: #2b2b2b; padding: 0.5rem; border-radius: 4px; border-left: 3px solid ${rarityColor};">
+                                <div style="font-size: 0.9rem; font-weight: 600; color: ${rarityColor};">${ach.name}</div>
+                                <div style="font-size: 0.75rem; color: #888;">${ach.category}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                document.getElementById('achievements-data').innerHTML = html;
+            } catch (error) {
+                console.error('載入成就數據失敗:', error);
+                document.getElementById('achievements-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
         // 頁面載入時執行
         loadStats();
         loadLevels();
@@ -1044,6 +1299,8 @@
         loadStatistics();
         loadCustomCommands();
         loadTempVoice();
+        loadWarnings();
+        loadAchievements();
         
         // 每30秒更新一次數據
         setInterval(() => {
@@ -1051,6 +1308,13 @@
             loadLevels();
             loadDaily();
             loadWelcome();
+            loadBirthdays();
+            loadGames();
+            loadStatistics();
+            loadCustomCommands();
+            loadTempVoice();
+            loadWarnings();
+            loadAchievements();
             loadBirthdays();
             loadGames();
             loadStatistics();
