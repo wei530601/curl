@@ -1040,53 +1040,11 @@ class WebServer:
             return web.json_response({'error': str(e)}, status=500)
     
     async def api_close_ticket(self, request):
-        """API：關閉客服單"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
-        guild_id = request.match_info['guild_id']
-        ticket_id = request.match_info['ticket_id']
-        
-        try:
-            body = await request.json()
-            reason = body.get('reason', '網頁關閉')
-            
-            file_path = f'./data/{guild_id}/tickets.json'
-            if not os.path.exists(file_path):
-                return web.json_response({'success': False, 'message': '找不到客服單'})
-            
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            if ticket_id not in data['tickets']:
-                return web.json_response({'success': False, 'message': '客服單不存在'})
-            
-            ticket = data['tickets'][ticket_id]
-            
-            # 更新狀態
-            from datetime import datetime
-            ticket['status'] = 'closed'
-            ticket['closed_at'] = datetime.now().isoformat()
-            ticket['closed_by'] = 'web_admin'
-            ticket['close_reason'] = reason
-            
-            # 保存數據
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            
-            # 嘗試刪除Discord頻道
-            guild = self.bot.get_guild(int(guild_id))
-            if guild and ticket['channel_id']:
-                channel = guild.get_channel(int(ticket['channel_id']))
-                if channel:
-                    await channel.delete(reason=f"客服單關閉：{reason}")
-            
-            return web.json_response({'success': True, 'message': '客服單已關閉'})
-            
-        except Exception as e:
-            return web.json_response({'error': str(e)}, status=500)
+        """API：關閉客服單（已禁用）"""
+        return web.json_response({
+            'success': False, 
+            'message': '網頁後台不支援關閉客服單，請使用 Discord 內的關閉按鈕'
+        }, status=403)
     
     async def api_my_tickets(self, request):
         """API：獲取當前用戶的所有客服單"""

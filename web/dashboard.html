@@ -1641,9 +1641,9 @@
                                                         創建者: ` + userName + `
                                                     </div>
                                                 </div>
-                                                <button onclick="closeTicket('` + ticketId + `')" style="padding: 0.5rem 1rem; background: #dc2626; border: none; color: white; cursor: pointer; font-size: 0.85rem; border-radius: 4px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
-                                                    🔒 關閉客服單
-                                                </button>
+                                                <div style="padding: 0.5rem 1rem; background: #374151; color: #9ca3af; font-size: 0.85rem; border-radius: 4px; font-weight: 600;">
+                                                    🔒 請在 Discord 內關閉
+                                                </div>
                                             </div>
                                             <div style="color: #666; font-size: 0.85rem;">
                                                 創建時間: ` + createdTime + `
@@ -1791,30 +1791,9 @@
             }
         }
 
-        // 關閉客服單
+        // 關閉客服單（已禁用）
         async function closeTicket(ticketId) {
-            if (!confirm('確定要關閉此客服單嗎？')) return;
-            
-            const reason = prompt('請輸入關閉原因（可選）：') || '管理員關閉';
-            
-            try {
-                const res = await fetch(`/api/tickets/${GUILD_ID}/${ticketId}/close`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reason })
-                });
-                
-                const data = await res.json();
-                
-                if (data.success) {
-                    showNotification('客服單已關閉！', 'success');
-                    loadTickets();
-                } else {
-                    showNotification(data.message || '關閉失敗', 'error');
-                }
-            } catch (error) {
-                showNotification('關閉失敗', 'error');
-            }
+            showNotification('網頁後台不支援關閉客服單，請在 Discord 內使用關閉按鈕', 'error');
         }
 
         // ===== 警告系統管理 =====

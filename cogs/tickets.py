@@ -332,79 +332,7 @@ class Tickets(commands.Cog):
         
         await interaction.response.send_message(f"✅ 已在 {target_channel.mention} 創建客服單面板", ephemeral=True)
     
-    @ticket_group.command(name="關閉", description="關閉客服單")
-    @app_commands.describe(原因="關閉原因")
-    async def close_ticket(self, interaction: discord.Interaction, 原因: str = "無"):
-        """關閉客服單"""
-        guild_id = str(interaction.guild.id)
-        data = self.tickets.get(guild_id, self.load_data(guild_id))
-        
-        # 檢查是否在客服單頻道中
-        ticket_id = None
-        for tid, ticket in data['tickets'].items():
-            if str(ticket.get('channel_id')) == str(interaction.channel.id):
-                ticket_id = tid
-                break
-        
-        if not ticket_id:
-            await interaction.response.send_message("❌ 這不是一個客服單頻道", ephemeral=True)
-            return
-        
-        ticket = data['tickets'][ticket_id]
-        
-        # 檢查權限
-        is_owner = str(interaction.user.id) == ticket['user_id']
-        is_staff = interaction.user.guild_permissions.manage_channels
-        
-        if not (is_owner or is_staff):
-            await interaction.response.send_message("❌ 您沒有權限關閉此客服單", ephemeral=True)
-            return
-        
-        # 完成聊天記錄
-        self.finalize_transcript(guild_id, ticket_id, ticket.get('channel_name', f"客服單-{ticket_id}"))
-        
-        # 更新客服單狀態
-        ticket['status'] = 'closed'
-        ticket['closed_at'] = datetime.now().isoformat()
-        ticket['closed_by'] = str(interaction.user.id)
-        ticket['close_reason'] = 原因
-        
-        self.tickets[guild_id] = data
-        self.save_data(guild_id, data)
-        
-        # 發送關閉訊息
-        embed = discord.Embed(
-            title="🔒 客服單已關閉",
-            description=f"此客服單將在 5 秒後刪除",
-            color=discord.Color.red(),
-            timestamp=datetime.now()
-        )
-        embed.add_field(name="關閉者", value=interaction.user.mention)
-        embed.add_field(name="原因", value=原因)
-        
-        await interaction.response.send_message(embed=embed)
-        
-        # 記錄到日誌頻道
-        if data['log_channel_id']:
-            log_channel = interaction.guild.get_channel(int(data['log_channel_id']))
-            if log_channel:
-                log_embed = discord.Embed(
-                    title="📋 客服單已關閉",
-                    color=discord.Color.orange(),
-                    timestamp=datetime.now()
-                )
-                log_embed.add_field(name="客服單 ID", value=f"#{ticket_id}", inline=True)
-                log_embed.add_field(name="創建者", value=f"<@{ticket['user_id']}>", inline=True)
-                log_embed.add_field(name="關閉者", value=interaction.user.mention, inline=True)
-                log_embed.add_field(name="原因", value=原因, inline=False)
-                log_embed.add_field(name="創建時間", value=ticket['created_at'], inline=True)
-                log_embed.add_field(name="關閉時間", value=ticket['closed_at'], inline=True)
-                
-                await log_channel.send(embed=log_embed)
-        
-        # 5秒後刪除頻道
-        await asyncio.sleep(5)
-        await interaction.channel.delete()
+
     
     @ticket_group.command(name="添加", description="添加用戶到客服單")
     @app_commands.describe(用戶="要添加的用戶")
@@ -553,22 +481,26 @@ class Tickets(commands.Cog):
         # 初始化聊天記錄HTML
         self.init_transcript(guild_id, ticket_id, f"客服單-{ticket_id}", interaction.user)
         
-        # 發送歡迎訊息
+        # 發送歡迎訊息（帶關閉按鈕）
         embed = discord.Embed(
             title=f"🎫 客服單 #{ticket_id}",
             description=f"您好 {interaction.user.mention}！\n\n"
                        "感謝您創建客服單，我們的支持團隊會盡快回覆您。\n"
                        "請詳細描述您的問題。\n\n"
-                       "使用 `/客服單 關閉` 來關閉此客服單。",
+                       "使用下方的 **關閉客服單** 按鈕來關閉此客服單。",
             color=discord.Color.green(),
             timestamp=datetime.now()
         )
         embed.set_footer(text=f"客服單 ID: {ticket_id}")
         
+        # 創建關閉按鈕視圖
+        close_view = CloseTicketView(self, ticket_id, str(interaction.user.id))
+        
         await channel.send(
             content=f"{interaction.user.mention}" + 
                    (f" {interaction.guild.get_role(int(data['support_role_id'])).mention}" if data['support_role_id'] else ""),
-            embed=embed
+            embed=embed,
+            view=close_view
         )
         
         await interaction.followup.send(f"✅ 已創建客服單: {channel.mention}", ephemeral=True)
@@ -599,6 +531,14 @@ class Tickets(commands.Cog):
         
         # 重新註冊持久化視圖
         self.bot.add_view(TicketPanelView(self))
+        
+        # 為所有開啟的客服單註冊關閉按鈕視圖
+        for guild_id, data in self.tickets.items():
+            if data and 'tickets' in data:
+                for ticket_id, ticket in data['tickets'].items():
+                    if ticket.get('status') == 'open':
+                        close_view = CloseTicketView(self, ticket_id, ticket['user_id'])
+                        self.bot.add_view(close_view)
     
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -625,6 +565,105 @@ class Tickets(commands.Cog):
                     message
                 )
                 break
+
+class CloseReasonModal(discord.ui.Modal, title='關閉客服單'):
+    """關閉原因輸入框"""
+    
+    reason = discord.ui.TextInput(
+        label='關閉原因',
+        placeholder='請輸入關閉此客服單的原因...',
+        required=False,
+        max_length=200,
+        default='無'
+    )
+    
+    def __init__(self, cog, ticket_id):
+        super().__init__()
+        self.cog = cog
+        self.ticket_id = ticket_id
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        guild_id = str(interaction.guild.id)
+        data = self.cog.tickets.get(guild_id, self.cog.load_data(guild_id))
+        
+        if self.ticket_id not in data['tickets']:
+            await interaction.response.send_message("❌ 客服單不存在", ephemeral=True)
+            return
+        
+        ticket = data['tickets'][self.ticket_id]
+        
+        # 完成聊天記錄
+        self.cog.finalize_transcript(guild_id, self.ticket_id, ticket.get('channel_name', f"客服單-{self.ticket_id}"))
+        
+        # 更新客服單狀態
+        ticket['status'] = 'closed'
+        ticket['closed_at'] = datetime.now().isoformat()
+        ticket['closed_by'] = str(interaction.user.id)
+        ticket['close_reason'] = str(self.reason.value)
+        
+        self.cog.tickets[guild_id] = data
+        self.cog.save_data(guild_id, data)
+        
+        # 發送關閉訊息
+        embed = discord.Embed(
+            title="🔒 客服單已關閉",
+            description=f"此客服單將在 5 秒後刪除",
+            color=discord.Color.red(),
+            timestamp=datetime.now()
+        )
+        embed.add_field(name="關閉者", value=interaction.user.mention)
+        embed.add_field(name="原因", value=str(self.reason.value))
+        
+        await interaction.response.send_message(embed=embed)
+        
+        # 記錄到日誌頻道
+        if data['log_channel_id']:
+            log_channel = interaction.guild.get_channel(int(data['log_channel_id']))
+            if log_channel:
+                log_embed = discord.Embed(
+                    title="📋 客服單已關閉",
+                    color=discord.Color.orange(),
+                    timestamp=datetime.now()
+                )
+                log_embed.add_field(name="客服單 ID", value=f"#{self.ticket_id}", inline=True)
+                log_embed.add_field(name="創建者", value=f"<@{ticket['user_id']}>", inline=True)
+                log_embed.add_field(name="關閉者", value=interaction.user.mention, inline=True)
+                log_embed.add_field(name="原因", value=str(self.reason.value), inline=False)
+                log_embed.add_field(name="創建時間", value=ticket['created_at'], inline=True)
+                log_embed.add_field(name="關閉時間", value=ticket['closed_at'], inline=True)
+                
+                await log_channel.send(embed=log_embed)
+        
+        # 5秒後刪除頻道
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
+
+class CloseTicketView(discord.ui.View):
+    """客服單關閉按鈕視圖"""
+    
+    def __init__(self, cog, ticket_id, creator_id):
+        super().__init__(timeout=None)
+        self.cog = cog
+        self.ticket_id = ticket_id
+        self.creator_id = creator_id
+    
+    @discord.ui.button(
+        label="關閉客服單",
+        style=discord.ButtonStyle.red,
+        emoji="🔒",
+        custom_id="close_ticket_button"
+    )
+    async def close_ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 檢查權限
+        is_owner = str(interaction.user.id) == str(self.creator_id)
+        is_staff = interaction.user.guild_permissions.manage_channels
+        
+        if not (is_owner or is_staff):
+            await interaction.response.send_message("❌ 您沒有權限關閉此客服單", ephemeral=True)
+            return
+        
+        # 顯示關閉原因輸入框
+        await interaction.response.send_modal(CloseReasonModal(self.cog, self.ticket_id))
 
 class TicketPanelView(discord.ui.View):
     """客服單面板視圖"""
