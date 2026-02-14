@@ -83,56 +83,6 @@ class Utilities(commands.Cog):
         
         await interaction.response.send_message(embed=embed)
     
-    @util_group.command(name="投票", description="創建一個投票")
-    @app_commands.describe(
-        question="投票問題",
-        option1="選項1",
-        option2="選項2",
-        option3="選項3（可選）",
-        option4="選項4（可選）",
-        option5="選項5（可選）"
-    )
-    async def poll(
-        self, 
-        interaction: discord.Interaction, 
-        question: str,
-        option1: str,
-        option2: str,
-        option3: str = None,
-        option4: str = None,
-        option5: str = None
-    ):
-        """創建投票"""
-        options = [option1, option2]
-        if option3:
-            options.append(option3)
-        if option4:
-            options.append(option4)
-        if option5:
-            options.append(option5)
-        
-        # 表情符號列表
-        emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
-        
-        embed = discord.Embed(
-            title="📊 投票",
-            description=f"**{question}**",
-            color=discord.Color.blue(),
-            timestamp=datetime.utcnow()
-        )
-        
-        # 添加選項
-        options_text = "\n\n".join([f"{emojis[i]} {opt}" for i, opt in enumerate(options)])
-        embed.add_field(name="選項", value=options_text, inline=False)
-        embed.set_footer(text=f"发起人: {interaction.user.name}")
-        
-        await interaction.response.send_message(embed=embed)
-        
-        # 获取刚發送的訊息并添加反应
-        message = await interaction.original_response()
-        for i in range(len(options)):
-            await message.add_reaction(emojis[i])
-    
     @util_group.command(name="提醒我", description="設定一個提醒")
     @app_commands.describe(
         duration="时长（分鐘）",
