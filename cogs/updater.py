@@ -211,8 +211,8 @@ class Updater(commands.Cog):
             # 等待一小段時間讓訊息顯示
             await asyncio.sleep(2)
             
-            # 自動重啟機器人
-            os.execv(sys.executable, ['python'] + sys.argv)
+            # 自動重啟機器人 (支援 Linux/Windows)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
         except Exception as e:
             print(f"   ❌ 寫入版本文件失敗: {e}")
             print("─" * 62)

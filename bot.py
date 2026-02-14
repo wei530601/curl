@@ -108,7 +108,8 @@ class MyBot(commands.Bot):
         print("\n" + "═" * 62)
         print("💬 終端命令:")
         print("   restart  - 重啟機器人     │   status  - 顯示狀態")
-        print("   stop     - 關閉機器人     │   help    - 顯示幫助")
+        print("   stop     - 關閉機器人     │   ver     - 查看版本")
+        print("   help     - 顯示幫助")
         print("═" * 62)
         
         print("\n✨ 準備就緒！等待指令中...")
@@ -136,8 +137,8 @@ class MyBot(commands.Bot):
                     print('🔄 正在重啟機器人...')
                     print('═' * 62 + '\n')
                     await self.close()
-                    # 重新啟動
-                    os.execv(sys.executable, ['python'] + sys.argv)
+                    # 重新啟動 (支援 Linux/Windows)
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
                 
                 elif command.lower() in ['stop', '關閉', 'quit', 'exit']:
                     print('\n' + '═' * 62)
@@ -160,6 +161,14 @@ class MyBot(commands.Bot):
                     print(f'║  運行時間: {str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")):<45}║')
                     print('╚' + '═' * 60 + '╝\n')
                 
+                elif command.lower() in ['ver', 'version', '版本']:
+                    version = get_version()
+                    print('\n' + '╔' + '═' * 60 + '╗')
+                    print('║' + ' ' * 22 + '📌 版本資訊' + ' ' * 24 + '║')
+                    print('╠' + '═' * 60 + '╣')
+                    print(f'║  當前版本: {version:<46}║')
+                    print('╚' + '═' * 60 + '╝\n')
+                
                 elif command.lower() in ['help', '幫助', 'h']:
                     print('\n' + '╔' + '═' * 60 + '╗')
                     print('║' + ' ' * 21 + '📋 可用終端命令' + ' ' * 21 + '║')
@@ -167,6 +176,7 @@ class MyBot(commands.Bot):
                     print('║  restart / 重啟     重新啟動機器人' + ' ' * 21 + '║')
                     print('║  stop / 關閉        關閉機器人' + ' ' * 25 + '║')
                     print('║  status / 狀態      顯示機器人狀態' + ' ' * 21 + '║')
+                    print('║  ver / 版本         顯示當前版本' + ' ' * 23 + '║')
                     print('║  help / 幫助        顯示此幫助訊息' + ' ' * 21 + '║')
                     print('╚' + '═' * 60 + '╝\n')
                 
