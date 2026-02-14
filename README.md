@@ -327,7 +327,6 @@ async def setup(bot):
 │   ├── dashboard.html      # 控制台主頁
 │   ├── my-tickets.html     # 我的客服單頁面
 │   └── static/             # 靜態資源（CSS、JS、圖片）
-├── website/                # 官網（排除於 Git 之外）
 └── cogs/                   # Cogs 資料夾（功能模組）
     ├── general.py          # 一般指令（ping、userinfo、help）
     ├── moderation.py       # 管理指令（kick、ban、warn、清除訊息）
