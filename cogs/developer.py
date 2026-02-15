@@ -266,10 +266,10 @@ class Developer(commands.Cog):
     
     @dev_group.command(name="全局封銮", description="在所有伺服器中封銮用戶")
     @app_commands.describe(
-        用戶ID="要封銮的用戶ID",
-        原因="封銮原因"
+        user_id="要封銮的用戶ID",
+        reason="封銮原因"
     )
-    async def global_ban(self, interaction: discord.Interaction, 用戶ID: str, 原因: str = "開發者全局封銮"):
+    async def global_ban(self, interaction: discord.Interaction, user_id: str, reason: str = "開發者全局封銮"):
         """全局封銮用戶（仅开发者）"""
         if not self.is_developer(interaction.user.id):
             await interaction.response.send_message(
@@ -281,8 +281,8 @@ class Developer(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         try:
-            user_id = int(用戶ID)
-            user = await self.bot.fetch_user(user_id)
+            uid = int(user_id)
+            user = await self.bot.fetch_user(uid)
         except ValueError:
             await interaction.followup.send(
                 "❌ 無效的用戶ID，請輸入數字ID",
@@ -303,11 +303,11 @@ class Developer(commands.Cog):
         for guild in self.bot.guilds:
             try:
                 # 檢查用戶是否在伺服器中
-                member = guild.get_member(user_id)
+                member = guild.get_member(uid)
                 if member or True:  # 即使不在伺服器也嘗試封銮
                     await guild.ban(
                         user,
-                        reason=f"全局封銮 by {interaction.user} | {原因}",
+                        reason=f"全局封銮 by {interaction.user} | {reason}",
                         delete_message_seconds=0
                     )
                     success_count += 1
@@ -324,7 +324,7 @@ class Developer(commands.Cog):
             color=discord.Color.red()
         )
         embed.add_field(name="目標用戶", value=f"{user.name} (`{user.id}`)", inline=False)
-        embed.add_field(name="封銮原因", value=原因, inline=False)
+        embed.add_field(name="封銮原因", value=reason, inline=False)
         embed.add_field(name="成功", value=f"`{success_count}` 個伺服器", inline=True)
         embed.add_field(name="失敗", value=f"`{fail_count}` 個伺服器", inline=True)
         embed.add_field(name="總計", value=f"`{len(self.bot.guilds)}` 個伺服器", inline=True)
@@ -341,12 +341,12 @@ class Developer(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
         
         print(f'\n🚫 開發者 {interaction.user.name} 對 {user.name}({user.id}) 執行全局封銮')
-        print(f'   原因: {原因}')
+        print(f'   原因: {reason}')
         print(f'   結果: {success_count} 成功 / {fail_count} 失敗')
     
     @dev_group.command(name="全局解封", description="在所有伺服器中解封用戶")
-    @app_commands.describe(用戶ID="要解封的用戶ID")
-    async def global_unban(self, interaction: discord.Interaction, 用戶ID: str):
+    @app_commands.describe(user_id="要解封的用戶ID")
+    async def global_unban(self, interaction: discord.Interaction, user_id: str):
         """全局解封用戶（仅开发者）"""
         if not self.is_developer(interaction.user.id):
             await interaction.response.send_message(
@@ -358,8 +358,8 @@ class Developer(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         try:
-            user_id = int(用戶ID)
-            user = await self.bot.fetch_user(user_id)
+            uid = int(user_id)
+            user = await self.bot.fetch_user(uid)
         except ValueError:
             await interaction.followup.send(
                 "❌ 無效的用戶ID，請輸入數字ID",
