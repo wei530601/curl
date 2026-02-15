@@ -45,3 +45,6 @@ Thumbs.db
 
 # 脚本工具
 git_upload.bat
+
+# 更新日誌（僅本地保存）
+update-log.txt
