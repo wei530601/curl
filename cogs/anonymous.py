@@ -8,15 +8,14 @@ from datetime import datetime
 class PostInfoButton(discord.ui.Button):
     """貼文資訊按鈕（僅管理員可見）"""
     
-    def __init__(self, author_id: int, author_name: str, timestamp: str):
+    def __init__(self, cog):
         super().__init__(
             label="貼文資訊",
             style=discord.ButtonStyle.secondary,
-            emoji="ℹ️"
+            emoji="ℹ️",
+            custom_id="anonymous_post_info"
         )
-        self.author_id = author_id
-        self.author_name = author_name
-        self.timestamp = timestamp
+        self.cog = cog
     
     async def callback(self, interaction: discord.Interaction):
         # 檢查是否為管理員
@@ -27,27 +26,44 @@ class PostInfoButton(discord.ui.Button):
             )
             return
         
+        # 從數據中查找貼文資訊
+        guild_id = str(interaction.guild.id)
+        message_id = str(interaction.message.id)
+        data = self.cog.load_data(guild_id)
+        
+        post_data = data.get('posts', {}).get(message_id)
+        if not post_data:
+            await interaction.response.send_message(
+                "❌ 找不到此貼文的資訊",
+                ephemeral=True
+            )
+            return
+        
+        author_id = int(post_data['author_id'])
+        author_name = post_data['author_name']
+        timestamp = post_data['timestamp']
+        
         embed = discord.Embed(
             title="📋 匿名貼文資訊",
             color=discord.Color.blue(),
-            timestamp=datetime.fromisoformat(self.timestamp)
+            timestamp=datetime.fromisoformat(timestamp)
         )
         
         embed.add_field(
             name="原始發送者",
-            value=f"<@{self.author_id}> ({self.author_name})",
+            value=f"<@{author_id}> ({author_name})",
             inline=False
         )
         
         embed.add_field(
             name="用戶 ID",
-            value=f"`{self.author_id}`",
+            value=f"`{author_id}`",
             inline=True
         )
         
         embed.add_field(
             name="發送時間",
-            value=f"<t:{int(datetime.fromisoformat(self.timestamp).timestamp())}:F>",
+            value=f"<t:{int(datetime.fromisoformat(timestamp).timestamp())}:F>",
             inline=True
         )
         
@@ -56,9 +72,9 @@ class PostInfoButton(discord.ui.Button):
 class AnonymousView(discord.ui.View):
     """匿名貼文視圖"""
     
-    def __init__(self, author_id: int, author_name: str, timestamp: str):
+    def __init__(self, cog):
         super().__init__(timeout=None)
-        self.add_item(PostInfoButton(author_id, author_name, timestamp))
+        self.add_item(PostInfoButton(cog))
 
 class Anonymous(commands.Cog):
     """匿名發言系統"""
@@ -136,11 +152,7 @@ class Anonymous(commands.Cog):
         
         # 創建視圖
         timestamp = datetime.now().isoformat()
-        view = AnonymousView(
-            author_id=interaction.user.id,
-            author_name=str(interaction.user),
-            timestamp=timestamp
-        )
+        view = AnonymousView(self)
         
         try:
             # 發送匿名訊息
@@ -310,11 +322,7 @@ class Anonymous(commands.Cog):
             
             # 為每個保存的貼文註冊視圖
             for message_id, post_data in data.get('posts', {}).items():
-                view = AnonymousView(
-                    author_id=int(post_data['author_id']),
-                    author_name=post_data['author_name'],
-                    timestamp=post_data['timestamp']
-                )
+                view = AnonymousView(self)
                 self.bot.add_view(view, message_id=int(message_id))
 
 async def setup(bot):
