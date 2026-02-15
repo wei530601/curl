@@ -756,6 +756,11 @@ class WebServer:
     
     async def api_clear_warnings(self, request):
         """清除用戶所有警告"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
         guild_id = request.match_info['guild_id']
         user_id = request.match_info['user_id']
         
@@ -786,6 +791,11 @@ class WebServer:
     
     async def api_remove_latest_warning(self, request):
         """移除用戶最近一次警告"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
         guild_id = request.match_info['guild_id']
         user_id = request.match_info['user_id']
         
