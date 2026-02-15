@@ -3,6 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 import os
 import sys
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 
 class Developer(commands.Cog):
@@ -14,6 +16,34 @@ class Developer(commands.Cog):
         load_dotenv()
         dev_ids = os.getenv('DEV_ID', '')
         self.dev_ids = [int(id.strip()) for id in dev_ids.split(',') if id.strip()]
+        # 封锁数据文件路径
+        self.blocked_users_file = './data/blocked_users.json'
+        self._ensure_data_file()
+    
+    def _ensure_data_file(self):
+        """确保封锁数据文件存在"""
+        os.makedirs('./data', exist_ok=True)
+        if not os.path.exists(self.blocked_users_file):
+            with open(self.blocked_users_file, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False, indent=4)
+    
+    def load_blocked_users(self):
+        """载入封锁用户列表"""
+        try:
+            with open(self.blocked_users_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    
+    def save_blocked_users(self, data):
+        """保存封锁用户列表"""
+        with open(self.blocked_users_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    
+    def is_user_blocked(self, user_id: int) -> bool:
+        """检查用户是否被封锁"""
+        blocked = self.load_blocked_users()
+        return str(user_id) in blocked
     
     def is_developer(self, user_id: int) -> bool:
         """检查用户是否为开发者"""
@@ -264,13 +294,13 @@ class Developer(commands.Cog):
         print(f'\n🔄 開發者 {interaction.user.name} ({interaction.user.id}) 觸發手動更新')
         await updater.check_and_update()
     
-    @dev_group.command(name="全局封銮", description="在所有伺服器中封銮用戶")
+    @dev_group.command(name="全局封銮", description="在機器人層面封銮用戶")
     @app_commands.describe(
         user_id="要封銮的用戶ID",
         reason="封銮原因"
     )
     async def global_ban(self, interaction: discord.Interaction, user_id: str, reason: str = "開發者全局封銮"):
-        """全局封銮用戶（仅开发者）"""
+        """全局封銮用戶（机器人层面）"""
         if not self.is_developer(interaction.user.id):
             await interaction.response.send_message(
                 "❌ 此命令僅限開發者使用！", 
@@ -296,58 +326,46 @@ class Developer(commands.Cog):
             )
             return
         
-        success_count = 0
-        fail_count = 0
-        banned_guilds = []
+        # 检查是否已被封锁
+        blocked = self.load_blocked_users()
+        if str(uid) in blocked:
+            await interaction.followup.send(
+                f"⚠️ 用戶 {user.name} (`{uid}`) 已經被封銮",
+                ephemeral=True
+            )
+            return
         
-        for guild in self.bot.guilds:
-            try:
-                # 檢查用戶是否在伺服器中
-                member = guild.get_member(uid)
-                if member or True:  # 即使不在伺服器也嘗試封銮
-                    await guild.ban(
-                        user,
-                        reason=f"全局封銮 by {interaction.user} | {reason}",
-                        delete_message_seconds=0
-                    )
-                    success_count += 1
-                    banned_guilds.append(guild.name)
-            except discord.Forbidden:
-                fail_count += 1
-            except discord.HTTPException:
-                fail_count += 1
-            except Exception:
-                fail_count += 1
+        # 添加到封锁列表
+        blocked[str(uid)] = {
+            "user_name": user.name,
+            "reason": reason,
+            "blocked_by": str(interaction.user),
+            "blocked_by_id": interaction.user.id,
+            "blocked_at": datetime.now().isoformat()
+        }
+        self.save_blocked_users(blocked)
         
         embed = discord.Embed(
-            title="🚫 全局封銮完成",
+            title="🚫 機器人層面封銮完成",
+            description="此用戶已無法使用機器人的任何功能",
             color=discord.Color.red()
         )
         embed.add_field(name="目標用戶", value=f"{user.name} (`{user.id}`)", inline=False)
         embed.add_field(name="封銮原因", value=reason, inline=False)
-        embed.add_field(name="成功", value=f"`{success_count}` 個伺服器", inline=True)
-        embed.add_field(name="失敗", value=f"`{fail_count}` 個伺服器", inline=True)
-        embed.add_field(name="總計", value=f"`{len(self.bot.guilds)}` 個伺服器", inline=True)
+        embed.add_field(name="執行者", value=f"{interaction.user.name} (`{interaction.user.id}`)", inline=False)
+        embed.add_field(name="封銮時間", value=f"<t:{int(datetime.now().timestamp())}:F>", inline=False)
         
-        if success_count > 0:
-            # 只顯示前10個伺服器
-            guilds_preview = "\n".join(banned_guilds[:10])
-            if len(banned_guilds) > 10:
-                guilds_preview += f"\n... 還有 {len(banned_guilds) - 10} 個伺服器"
-            embed.add_field(name="已封銮的伺服器", value=guilds_preview, inline=False)
-        
-        embed.set_footer(text=f"執行者: {interaction.user.name}")
+        embed.set_footer(text="機器人層面封銮 - 用戶將無法使用任何命令")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
-        print(f'\n🚫 開發者 {interaction.user.name} 對 {user.name}({user.id}) 執行全局封銮')
+        print(f'\n🚫 開發者 {interaction.user.name} 對 {user.name}({user.id}) 執行機器人層面封銮')
         print(f'   原因: {reason}')
-        print(f'   結果: {success_count} 成功 / {fail_count} 失敗')
     
-    @dev_group.command(name="全局解封", description="在所有伺服器中解封用戶")
+    @dev_group.command(name="全局解封", description="解除機器人層面封銮")
     @app_commands.describe(user_id="要解封的用戶ID")
     async def global_unban(self, interaction: discord.Interaction, user_id: str):
-        """全局解封用戶（仅开发者）"""
+        """全局解封用戶（机器人层面）"""
         if not self.is_developer(interaction.user.id):
             await interaction.response.send_message(
                 "❌ 此命令僅限開發者使用！", 
@@ -373,50 +391,76 @@ class Developer(commands.Cog):
             )
             return
         
-        success_count = 0
-        fail_count = 0
-        unbanned_guilds = []
+        # 检查是否被封锁
+        blocked = self.load_blocked_users()
+        if str(uid) not in blocked:
+            await interaction.followup.send(
+                f"⚠️ 用戶 {user.name} (`{uid}`) 未被封銮",
+                ephemeral=True
+            )
+            return
         
-        for guild in self.bot.guilds:
-            try:
-                await guild.unban(
-                    user,
-                    reason=f"全局解封 by {interaction.user}"
-                )
-                success_count += 1
-                unbanned_guilds.append(guild.name)
-            except discord.NotFound:
-                # 用戶未被封銮
-                fail_count += 1
-            except discord.Forbidden:
-                fail_count += 1
-            except discord.HTTPException:
-                fail_count += 1
-            except Exception:
-                fail_count += 1
+        # 获取封锁信息
+        block_info = blocked[str(uid)]
+        
+        # 从封锁列表移除
+        del blocked[str(uid)]
+        self.save_blocked_users(blocked)
         
         embed = discord.Embed(
-            title="✅ 全局解封完成",
+            title="✅ 機器人層面解封完成",
+            description="此用戶已恢復使用機器人功能的權限",
             color=discord.Color.green()
         )
         embed.add_field(name="目標用戶", value=f"{user.name} (`{user.id}`)", inline=False)
-        embed.add_field(name="成功", value=f"`{success_count}` 個伺服器", inline=True)
-        embed.add_field(name="失敗/未封銮", value=f"`{fail_count}` 個伺服器", inline=True)
-        embed.add_field(name="總計", value=f"`{len(self.bot.guilds)}` 個伺服器", inline=True)
+        embed.add_field(name="原封銮原因", value=block_info.get('reason', '無'), inline=False)
+        embed.add_field(name="原執行者", value=block_info.get('blocked_by', '未知'), inline=True)
+        embed.add_field(name="封銮時間", value=f"<t:{int(datetime.fromisoformat(block_info.get('blocked_at', datetime.now().isoformat())).timestamp())}:R>", inline=True)
+        embed.add_field(name="解封執行者", value=f"{interaction.user.name} (`{interaction.user.id}`)", inline=False)
         
-        if success_count > 0:
-            # 只顯示前10個伺服器
-            guilds_preview = "\n".join(unbanned_guilds[:10])
-            if len(unbanned_guilds) > 10:
-                guilds_preview += f"\n... 還有 {len(unbanned_guilds) - 10} 個伺服器"
-            embed.add_field(name="已解封的伺服器", value=guilds_preview, inline=False)
-        
-        embed.set_footer(text=f"執行者: {interaction.user.name}")
+        embed.set_footer(text="機器人層面解封 - 用戶可以重新使用命令")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
-        print(f'\n✅ 開發者 {interaction.user.name} 對 {user.name}({user.id}) 執行全局解封')
-        print(f'   結果: {success_count} 成功 / {fail_count} 失敗')
+        print(f'\n✅ 開發者 {interaction.user.name} 對 {user.name}({user.id}) 執行機器人層面解封')
+    
+    @dev_group.command(name="封銮列表", description="查看所有被封銮的用戶")
+    async def blocked_list(self, interaction: discord.Interaction):
+        """查看封锁列表"""
+        if not self.is_developer(interaction.user.id):
+            await interaction.response.send_message(
+                "❌ 此命令僅限開發者使用！", 
+                ephemeral=True
+            )
+            return
+        
+        blocked = self.load_blocked_users()
+        
+        if not blocked:
+            await interaction.response.send_message(
+                "📋 目前沒有被封銮的用戶",
+                ephemeral=True
+            )
+            return
+        
+        embed = discord.Embed(
+            title="🚫 機器人層面封銮列表",
+            description=f"共 {len(blocked)} 名用戶被封銮",
+            color=discord.Color.red()
+        )
+        
+        for uid, info in list(blocked.items())[:10]:  # 最多显示10个
+            blocked_time = datetime.fromisoformat(info.get('blocked_at', datetime.now().isoformat()))
+            embed.add_field(
+                name=f"{info.get('user_name', 'Unknown')} (`{uid}`)",
+                value=f"**原因:** {info.get('reason', '無')}\n**執行者:** {info.get('blocked_by', '未知')}\n**時間:** <t:{int(blocked_time.timestamp())}:R>",
+                inline=False
+            )
+        
+        if len(blocked) > 10:
+            embed.set_footer(text=f"還有 {len(blocked) - 10} 名用戶未顯示")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -425,6 +469,11 @@ class Developer(commands.Cog):
             print(f'👨‍💻 開發者模組已載入 ({len(self.dev_ids)} 位開發者)')
         else:
             print('⚠️  開發者模組已載入，但未設定 DEV_ID')
+        
+        # 显示封锁用户数量
+        blocked = self.load_blocked_users()
+        if blocked:
+            print(f'🚫 當前有 {len(blocked)} 名用戶被機器人層面封銮')
 
 async def setup(bot):
     await bot.add_cog(Developer(bot))

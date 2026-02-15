@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 import asyncio
 import sys
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 from web.server import WebServer
@@ -62,6 +63,47 @@ class MyBot(commands.Bot):
         
         # 初始化網頁伺服器
         self.web_server = WebServer(self, port=WEB_PORT)
+        
+        # 設置全局交互檢查
+        self.tree.interaction_check = self.global_interaction_check
+    
+    async def global_interaction_check(self, interaction: discord.Interaction) -> bool:
+        """全局交互檢查 - 攔截被封鎖用戶的命令"""
+        # 檢查用戶是否被封鎖
+        blocked_file = './data/blocked_users.json'
+        if os.path.exists(blocked_file):
+            try:
+                with open(blocked_file, 'r', encoding='utf-8') as f:
+                    blocked = json.load(f)
+                
+                if str(interaction.user.id) in blocked:
+                    # 用戶被封鎖，禁止執行命令
+                    embed = discord.Embed(
+                        title="🚫 您已被封鎖",
+                        description="您已被機器人管理員封鎖，無法使用任何功能。",
+                        color=discord.Color.red()
+                    )
+                    
+                    block_info = blocked[str(interaction.user.id)]
+                    embed.add_field(
+                        name="封鎖原因",
+                        value=block_info.get('reason', '未提供'),
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="封鎖時間",
+                        value=f"<t:{int(datetime.fromisoformat(block_info.get('blocked_at', datetime.now().isoformat())).timestamp())}:F>",
+                        inline=False
+                    )
+                    
+                    embed.set_footer(text="如有疑問，請聯繫機器人管理員")
+                    
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return False
+            except Exception as e:
+                print(f"檢查封鎖列表時發生錯誤: {e}")
+        
+        return True
     
     async def setup_hook(self):
         print("\n📦 正在初始化系統...")
