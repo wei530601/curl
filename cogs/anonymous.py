@@ -4,6 +4,7 @@ from discord.ext import commands
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 class PostInfoButton(discord.ui.Button):
     """貼文資訊按鈕（僅管理員可見）"""
@@ -18,10 +19,14 @@ class PostInfoButton(discord.ui.Button):
         self.cog = cog
     
     async def callback(self, interaction: discord.Interaction):
-        # 檢查是否為管理員
-        if not interaction.user.guild_permissions.manage_messages:
+        # 檢查是否為開發者
+        load_dotenv()
+        dev_ids = os.getenv('DEV_ID', '')
+        dev_id_list = [int(id.strip()) for id in dev_ids.split(',') if id.strip()]
+        
+        if interaction.user.id not in dev_id_list:
             await interaction.response.send_message(
-                "❌ 只有伺服器管理員才能查看貼文資訊",
+                "❌ 只有機器人開發者才能查看貼文資訊",
                 ephemeral=True
             )
             return
