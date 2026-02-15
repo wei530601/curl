@@ -194,7 +194,27 @@ DISCORD_REDIRECT_URI=http://localhost:8080/callback
 
 # Session 密鑰（可選，會自動生成）
 SESSION_SECRET=隨機44字符的密鑰
+
+# 機器人狀態設定（可選）
+# 狀態類型: playing（玩）, watching（看）, listening（聽）, streaming（直播）, competing（競爭）
+BOT_STATUS_TYPE=playing
+# 狀態顯示文字
+BOT_STATUS_TEXT=/help 查看指令
+# 串流網址（僅當 BOT_STATUS_TYPE=streaming 時需要）
+BOT_STATUS_URL=https://twitch.tv/your_channel
+
+# 開發者 ID（多個用逗號分隔）
+DEV_ID=你的Discord用戶ID
 ```
+
+#### 🎭 機器人狀態類型說明：
+- **playing** - 顯示「正在玩 xxx」
+- **watching** - 顯示「正在看 xxx」
+- **listening** - 顯示「正在聽 xxx」
+- **streaming** - 顯示「正在直播 xxx」（需要提供 BOT_STATUS_URL）
+- **competing** - 顯示「正在競爭 xxx」
+
+只需修改 `.env` 文件中的 `BOT_STATUS_TYPE` 和 `BOT_STATUS_TEXT`，重啟機器人即可生效！
 
 ### 3. 獲取 Discord Bot Token 和 OAuth2 設定
 

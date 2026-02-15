@@ -13,6 +13,11 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 WEB_PORT = int(os.getenv('WEB_PORT', 8080))  # 網頁端口，預設8080
 
+# 機器人狀態設定
+BOT_STATUS_TYPE = os.getenv('BOT_STATUS_TYPE', 'playing')  # playing, watching, listening, streaming, competing
+BOT_STATUS_TEXT = os.getenv('BOT_STATUS_TEXT', '/help 查看指令')
+BOT_STATUS_URL = os.getenv('BOT_STATUS_URL', '')  # 僅用於 streaming 類型
+
 # 讀取版本號
 def get_version():
     """從 version.txt 讀取版本號"""
@@ -105,6 +110,31 @@ class MyBot(commands.Bot):
         
         return True
     
+    async def set_bot_status(self):
+        """設定機器人狀態"""
+        status_type = BOT_STATUS_TYPE.lower()
+        status_text = BOT_STATUS_TEXT
+        
+        try:
+            if status_type == 'playing':
+                activity = discord.Game(name=status_text)
+            elif status_type == 'watching':
+                activity = discord.Activity(type=discord.ActivityType.watching, name=status_text)
+            elif status_type == 'listening':
+                activity = discord.Activity(type=discord.ActivityType.listening, name=status_text)
+            elif status_type == 'streaming':
+                stream_url = BOT_STATUS_URL or 'https://twitch.tv/discord'
+                activity = discord.Streaming(name=status_text, url=stream_url)
+            elif status_type == 'competing':
+                activity = discord.Activity(type=discord.ActivityType.competing, name=status_text)
+            else:
+                activity = discord.Game(name=status_text)
+            
+            await self.change_presence(activity=activity, status=discord.Status.online)
+            print(f"\n✅ 已設定機器人狀態: {status_type.title()} - {status_text}")
+        except Exception as e:
+            print(f"\n⚠️  設定機器人狀態失敗: {e}")
+    
     async def setup_hook(self):
         print("\n📦 正在初始化系統...")
         print("─" * 62)
@@ -139,6 +169,9 @@ class MyBot(commands.Bot):
         print("║                    🤖 機器人已成功啟動                       ║")
         print("╚══════════════════════════════════════════════════════════════╝")
         
+        # 設定機器人狀態
+        await self.set_bot_status()
+        
         print("\n📊 機器人資訊:")
         print(f"   • 名稱:     {self.user.name}")
         print(f"   • ID:       {self.user.id}")
@@ -146,6 +179,7 @@ class MyBot(commands.Bot):
         print(f"   • 用戶數:   {sum(g.member_count for g in self.guilds):,} 位")
         print(f"   • 延遲:     {round(self.latency * 1000)}ms")
         print(f"   • 網頁:     http://localhost:{WEB_PORT}")
+        print(f"   • 狀態:     {BOT_STATUS_TYPE.title()} - {BOT_STATUS_TEXT}")
         
         print("\n" + "═" * 62)
         print("💬 終端命令:")
