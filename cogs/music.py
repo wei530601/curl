@@ -105,7 +105,7 @@ class Music(commands.Cog):
         await interaction.response.send_message("👋 已離開語音頻道")
 
     @app_commands.command(name="播放", description="播放音樂")
-    @app_commands.describe(搜尋="歌曲名稱或 YouTube/Spotify 連結")
+    @app_commands.describe(搜尋="歌曲名稱或 YouTube/SoundCloud 連結")
     async def play(self, interaction: discord.Interaction, 搜尋: str):
         """播放音樂"""
         await interaction.response.defer()
@@ -123,18 +123,56 @@ class Music(commands.Cog):
             player = await channel.connect(cls=wavelink.Player)
             player.text_channel = interaction.channel
 
-        # 搜尋歌曲
+        # 搜尋歌曲 - 嘗試多個來源
         try:
-            tracks: wavelink.Search = await wavelink.Playable.search(搜尋)
+            tracks = None
+            error_messages = []
+            
+            # 嘗試不同的搜尋源
+            search_sources = [
+                ("YouTube Music", f"ytmsearch:{搜尋}"),
+                ("YouTube", f"ytsearch:{搜尋}"),
+                ("SoundCloud", f"scsearch:{搜尋}"),
+            ]
+            
+            # 如果是直接連結，直接搜尋
+            if 搜尋.startswith(('http://', 'https://')):
+                try:
+                    tracks = await wavelink.Playable.search(搜尋)
+                except Exception as e:
+                    error_messages.append(f"連結載入失敗: {str(e)[:50]}")
+            
+            # 如果直接連結失敗或不是連結，嘗試搜尋
+            if not tracks:
+                for source_name, search_query in search_sources:
+                    try:
+                        tracks = await wavelink.Playable.search(search_query)
+                        if tracks:
+                            break
+                    except Exception as e:
+                        error_messages.append(f"{source_name}: {str(e)[:50]}")
+                        continue
             
             if not tracks:
-                await interaction.followup.send("❌ 找不到該歌曲！")
+                error_msg = "❌ 找不到該歌曲！\n\n**可能的原因：**\n"
+                error_msg += "• YouTube 可能暫時無法使用\n"
+                error_msg += "• 請嘗試使用 SoundCloud 連結\n"
+                error_msg += "• 檢查 Lavalink 是否正常運行\n"
+                if error_messages:
+                    error_msg += f"\n**錯誤詳情：**\n" + "\n".join(f"• {msg}" for msg in error_messages[:3])
+                await interaction.followup.send(error_msg)
                 return
 
             # 如果是播放列表
             if isinstance(tracks, wavelink.Playlist):
                 added: int = await player.queue.put_wait(tracks)
-                await interaction.followup.send(f"✅ 已添加播放列表 **{tracks.name}** ({added} 首歌曲)")
+                embed = discord.Embed(
+                    title="✅ 已添加播放列表",
+                    description=f"**{tracks.name}**",
+                    color=discord.Color.green()
+                )
+                embed.add_field(name="歌曲數量", value=f"{added} 首", inline=True)
+                await interaction.followup.send(embed=embed)
             else:
                 track: wavelink.Playable = tracks[0]
                 await player.queue.put_wait(track)
@@ -150,17 +188,43 @@ class Music(commands.Cog):
                     if track.length:
                         duration = str(timedelta(milliseconds=track.length))
                         embed.add_field(name="時長", value=duration, inline=True)
+                    position = len(player.queue)
+                    embed.add_field(name="隊列位置", value=f"第 {position} 首", inline=True)
                     await interaction.followup.send(embed=embed)
                 else:
-                    await interaction.followup.send(f"🔍 正在搜尋 **{搜尋}**...")
+                    await interaction.followup.send(f"🔍 正在載入 **{track.title}**...")
 
             # 如果沒有正在播放的歌曲，開始播放
             if not player.playing:
                 next_track = player.queue.get()
                 await player.play(next_track)
 
+        except wavelink.LavalinkLoadException as e:
+            await interaction.followup.send(
+                f"❌ Lavalink 載入失敗！\n\n"
+                f"**錯誤：** {str(e)[:100]}\n\n"
+                f"**建議：**\n"
+                f"• 更新 Lavalink 到最新版本\n"
+                f"• 檢查 Lavalink 配置文件\n"
+                f"• 嘗試使用 SoundCloud 連結"
+            )
         except Exception as e:
-            await interaction.followup.send(f"❌ 播放時發生錯誤: {str(e)}")
+            error_str = str(e)
+            if "Something went wrong" in error_str or "Failed to Load Tracks" in error_str:
+                await interaction.followup.send(
+                    f"❌ 音樂源暫時無法使用！\n\n"
+                    f"**可能原因：**\n"
+                    f"• YouTube 封鎖了請求\n"
+                    f"• Lavalink 需要更新\n"
+                    f"• 網路連線問題\n\n"
+                    f"**解決方案：**\n"
+                    f"1. 嘗試使用 SoundCloud 連結\n"
+                    f"2. 更新 Lavalink 到最新版本\n"
+                    f"3. 檢查 application.yml 配置\n"
+                    f"4. 稍後再試"
+                )
+            else:
+                await interaction.followup.send(f"❌ 播放時發生錯誤:\n```{error_str[:200]}```")
 
     @app_commands.command(name="暫停", description="暫停播放")
     async def pause(self, interaction: discord.Interaction):
