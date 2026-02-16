@@ -69,6 +69,12 @@ class MyBot(commands.Bot):
         # 初始化網頁伺服器
         self.web_server = WebServer(self, port=WEB_PORT)
         
+        # 儲存配置供 cogs 使用
+        self.config = {
+            'LAVALINK_URI': os.getenv('LAVALINK_URI', 'http://localhost:2333'),
+            'LAVALINK_PASSWORD': os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
+        }
+        
         # 設置全局交互檢查
         self.tree.interaction_check = self.global_interaction_check
     
