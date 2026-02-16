@@ -7,7 +7,6 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 from web.server import WebServer
-import wavelink
 
 # 載入環境變數
 load_dotenv()
@@ -18,11 +17,6 @@ WEB_PORT = int(os.getenv('WEB_PORT', 8080))  # 網頁端口，預設8080
 BOT_STATUS_TYPE = os.getenv('BOT_STATUS_TYPE', 'playing')  # playing, watching, listening, streaming, competing
 BOT_STATUS_TEXT = os.getenv('BOT_STATUS_TEXT', '/help 查看指令')
 BOT_STATUS_URL = os.getenv('BOT_STATUS_URL', '')  # 僅用於 streaming 類型
-
-# Lavalink 設定
-LAVALINK_HOST = os.getenv('LAVALINK_HOST', 'localhost')
-LAVALINK_PORT = int(os.getenv('LAVALINK_PORT', 2333))
-LAVALINK_PASSWORD = os.getenv('LAVALINK_PASSWORD', 'youshallnotpass')
 
 # 讀取版本號
 def get_version():
@@ -149,19 +143,6 @@ class MyBot(commands.Bot):
         print("🌐 啟動網頁控制台...")
         await self.web_server.start()
         print(f"   ✓ 網頁控制台已啟動 (端口: {WEB_PORT})")
-        
-        # 初始化 Lavalink
-        print("\n🎵 連接 Lavalink 音樂伺服器...")
-        try:
-            node: wavelink.Node = wavelink.Node(
-                uri=f'http://{LAVALINK_HOST}:{LAVALINK_PORT}',
-                password=LAVALINK_PASSWORD
-            )
-            await wavelink.Pool.connect(client=self, nodes=[node])
-            print(f"   ✓ Lavalink 已連接 ({LAVALINK_HOST}:{LAVALINK_PORT})")
-        except Exception as e:
-            print(f"   ⚠️  Lavalink 連接失敗: {e}")
-            print("   ⚠️  音樂功能將不可用，請確認 Lavalink 伺服器是否運行")
         
         # 載入所有cogs
         print("\n📁 載入功能模組...")
