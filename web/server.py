@@ -72,6 +72,14 @@ class WebServer:
         self.app.router.add_post('/api/tickets/{guild_id}/{ticket_id}/close', self.api_close_ticket)
         self.app.router.add_get('/api/tickets/{guild_id}/{ticket_id}/transcript', self.api_get_ticket_transcript)
         self.app.router.add_post('/api/tickets/{guild_id}/create-panel', self.api_create_ticket_panel)
+        
+        # 自動回覆系統 API
+        self.app.router.add_get('/api/auto-reply/{guild_id}', self.api_get_auto_replies)
+        self.app.router.add_post('/api/auto-reply/{guild_id}', self.api_add_auto_reply)
+        self.app.router.add_put('/api/auto-reply/{guild_id}/{rule_id}', self.api_update_auto_reply)
+        self.app.router.add_delete('/api/auto-reply/{guild_id}/{rule_id}', self.api_delete_auto_reply)
+        self.app.router.add_post('/api/auto-reply/{guild_id}/toggle', self.api_toggle_auto_reply_system)
+        self.app.router.add_post('/api/auto-reply/{guild_id}/{rule_id}/toggle', self.api_toggle_auto_reply_rule)
     
     async def index(self, request):
         """主頁"""
@@ -1289,6 +1297,259 @@ class WebServer:
                 'message_id': str(message.id)
             })
             
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    # ===== 自動回覆系統 API =====
+    
+    async def api_get_auto_replies(self, request):
+        """API：獲取自動回覆規則"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        file_path = f'./data/{guild_id}/auto_reply.json'
+        
+        if not os.path.exists(file_path):
+            return web.json_response({
+                'enabled': True,
+                'rules': []
+            })
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 獲取伺服器頻道和角色信息
+            guild = self.bot.get_guild(int(guild_id))
+            if guild:
+                # 添加頻道和角色名稱
+                for rule in data.get('rules', []):
+                    # 添加頻道名稱
+                    if 'channel_ids' in rule:
+                        channels = []
+                        for ch_id in rule['channel_ids']:
+                            channel = guild.get_channel(int(ch_id))
+                            if channel:
+                                channels.append({'id': ch_id, 'name': channel.name})
+                        rule['channels'] = channels
+                    
+                    # 添加角色名稱
+                    if 'role_ids' in rule:
+                        roles = []
+                        for role_id in rule['role_ids']:
+                            role = guild.get_role(int(role_id))
+                            if role:
+                                roles.append({'id': role_id, 'name': role.name})
+                        rule['roles'] = roles
+            
+            return web.json_response(data)
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_add_auto_reply(self, request):
+        """API：添加自動回覆規則"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            data_input = await request.json()
+            
+            # 載入現有數據
+            file_path = f'./data/{guild_id}/auto_reply.json'
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {'enabled': True, 'rules': []}
+            
+            # 創建新規則
+            new_rule = {
+                'id': max([r.get('id', 0) for r in data.get('rules', [])] + [0]) + 1,
+                'trigger': data_input.get('trigger', ''),
+                'reply': data_input.get('reply', ''),
+                'match_type': data_input.get('match_type', 'contains'),
+                'reply_type': data_input.get('reply_type', 'message'),
+                'enabled': data_input.get('enabled', True),
+                'case_sensitive': data_input.get('case_sensitive', False),
+                'mention_user': data_input.get('mention_user', False),
+                'trigger_once': data_input.get('trigger_once', False),
+                'channel_ids': data_input.get('channel_ids', []),
+                'role_ids': data_input.get('role_ids', []),
+                'reaction': data_input.get('reaction', '👍'),
+                'triggered_count': 0,
+                'created_at': datetime.now().isoformat(),
+                'created_by': session.get('user', {}).get('id')
+            }
+            
+            data.setdefault('rules', []).append(new_rule)
+            
+            # 保存
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'rule': new_rule})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_update_auto_reply(self, request):
+        """API：更新自動回覆規則"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        rule_id = int(request.match_info.get('rule_id'))
+        
+        try:
+            data_input = await request.json()
+            
+            file_path = f'./data/{guild_id}/auto_reply.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'error': '找不到自動回覆數據'}, status=404)
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 查找並更新規則
+            found = False
+            for rule in data.get('rules', []):
+                if rule['id'] == rule_id:
+                    rule['trigger'] = data_input.get('trigger', rule['trigger'])
+                    rule['reply'] = data_input.get('reply', rule['reply'])
+                    rule['match_type'] = data_input.get('match_type', rule['match_type'])
+                    rule['reply_type'] = data_input.get('reply_type', rule['reply_type'])
+                    rule['enabled'] = data_input.get('enabled', rule['enabled'])
+                    rule['case_sensitive'] = data_input.get('case_sensitive', rule.get('case_sensitive', False))
+                    rule['mention_user'] = data_input.get('mention_user', rule.get('mention_user', False))
+                    rule['trigger_once'] = data_input.get('trigger_once', rule.get('trigger_once', False))
+                    rule['channel_ids'] = data_input.get('channel_ids', rule.get('channel_ids', []))
+                    rule['role_ids'] = data_input.get('role_ids', rule.get('role_ids', []))
+                    rule['reaction'] = data_input.get('reaction', rule.get('reaction', '👍'))
+                    rule['updated_at'] = datetime.now().isoformat()
+                    found = True
+                    break
+            
+            if not found:
+                return web.json_response({'error': '找不到指定規則'}, status=404)
+            
+            # 保存
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_delete_auto_reply(self, request):
+        """API：刪除自動回覆規則"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        rule_id = int(request.match_info.get('rule_id'))
+        
+        try:
+            file_path = f'./data/{guild_id}/auto_reply.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'error': '找不到自動回覆數據'}, status=404)
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 刪除規則
+            original_length = len(data.get('rules', []))
+            data['rules'] = [r for r in data.get('rules', []) if r['id'] != rule_id]
+            
+            if len(data['rules']) == original_length:
+                return web.json_response({'error': '找不到指定規則'}, status=404)
+            
+            # 保存
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_toggle_auto_reply_system(self, request):
+        """API：開關自動回覆系統"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        
+        try:
+            data_input = await request.json()
+            enabled = data_input.get('enabled', True)
+            
+            file_path = f'./data/{guild_id}/auto_reply.json'
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {'enabled': True, 'rules': []}
+            
+            data['enabled'] = enabled
+            
+            # 保存
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'enabled': enabled})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_toggle_auto_reply_rule(self, request):
+        """API：開關特定自動回覆規則"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
+        guild_id = request.match_info.get('guild_id')
+        rule_id = int(request.match_info.get('rule_id'))
+        
+        try:
+            data_input = await request.json()
+            enabled = data_input.get('enabled', True)
+            
+            file_path = f'./data/{guild_id}/auto_reply.json'
+            if not os.path.exists(file_path):
+                return web.json_response({'error': '找不到自動回覆數據'}, status=404)
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 更新規則狀態
+            found = False
+            for rule in data.get('rules', []):
+                if rule['id'] == rule_id:
+                    rule['enabled'] = enabled
+                    found = True
+                    break
+            
+            if not found:
+                return web.json_response({'error': '找不到指定規則'}, status=404)
+            
+            # 保存
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'enabled': enabled})
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
     

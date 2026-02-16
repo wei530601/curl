@@ -475,6 +475,9 @@
             <div class="sidebar-item" onclick="showSection('custom-commands')">
                 自定義命令
             </div>
+            <div class="sidebar-item" onclick="showSection('auto-reply')">
+                自動回覆
+            </div>
             
             <div class="sidebar-section">系統設定</div>
             <div class="sidebar-item" onclick="showSection('welcome')">
@@ -592,6 +595,117 @@
                 <div class="section">
                     <h2 class="section-title">客服單系統管理</h2>
                     <div id="tickets-data" style="color: #888;">載入中...</div>
+                </div>
+            </div>
+
+            <!-- 自動回覆系統 -->
+            <div id="section-auto-reply" class="content-section" style="display: none;">
+                <div class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 class="section-title" style="margin: 0;">自動回覆管理</h2>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; color: #ccc;">
+                                <span id="auto-reply-system-status">系統狀態</span>
+                                <input type="checkbox" id="auto-reply-system-toggle" onchange="toggleAutoReplySystem(this.checked)"
+                                       style="width: 44px; height: 22px;">
+                            </label>
+                            <button class="action-btn" onclick="openAddAutoReplyModal()" 
+                                    style="background: #2563eb; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;">
+                                ➕ 添加規則
+                            </button>
+                        </div>
+                    </div>
+                    <div id="auto-reply-data" style="color: #888;">載入中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/編輯自動回覆規則的模態框 -->
+    <div id="autoReplyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: #2b2b2b; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 id="modalTitle" style="margin: 0; color: #fff;">添加自動回覆規則</h3>
+                <button onclick="closeAutoReplyModal()" style="background: none; border: none; color: #888; font-size: 1.5rem; cursor: pointer;">✕</button>
+            </div>
+            
+            <input type="hidden" id="editRuleId" value="">
+            
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- 觸發詞 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">觸發詞</label>
+                    <input type="text" id="triggerInput" placeholder="輸入觸發關鍵詞" 
+                           style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                </div>
+                
+                <!-- 回覆內容 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">回覆內容</label>
+                    <textarea id="replyInput" rows="3" placeholder="輸入回覆內容&#10;&#10;可用變量: {user} {username} {server} {channel}" 
+                              style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; resize: vertical;"></textarea>
+                </div>
+                
+                <!-- 匹配類型 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">匹配類型</label>
+                    <select id="matchTypeSelect" style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        <option value="contains">包含關鍵詞</option>
+                        <option value="exact">完全匹配</option>
+                        <option value="starts_with">以...開頭</option>
+                        <option value="ends_with">以...結尾</option>
+                        <option value="regex">正則表達式</option>
+                    </select>
+                </div>
+                
+                <!-- 回覆類型 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">回覆類型</label>
+                    <select id="replyTypeSelect" style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="toggleReactionInput(this.value)">
+                        <option value="message">普通消息</option>
+                        <option value="reply">回覆消息</option>
+                        <option value="dm">私訊用戶</option>
+                        <option value="react">添加反應</option>
+                    </select>
+                </div>
+                
+                <!-- 反應 Emoji（僅在回覆類型為 react 時顯示） -->
+                <div id="reactionInputDiv" style="display: none;">
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">反應 Emoji</label>
+                    <input type="text" id="reactionInput" placeholder="輸入 Emoji，例如：👍" value="👍"
+                           style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                </div>
+                
+                <!-- 選項 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #ccc;">
+                        <input type="checkbox" id="caseSensitiveCheck">
+                        區分大小寫
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #ccc;">
+                        <input type="checkbox" id="mentionUserCheck">
+                        提及用戶
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #ccc;">
+                        <input type="checkbox" id="triggerOnceCheck">
+                        只觸發一次
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #ccc;">
+                        <input type="checkbox" id="enabledCheck" checked>
+                        啟用規則
+                    </label>
+                </div>
+                
+                <!-- 按鈕 -->
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button onclick="saveAutoReply()" 
+                            style="flex: 1; padding: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                        保存
+                    </button>
+                    <button onclick="closeAutoReplyModal()" 
+                            style="flex: 1; padding: 0.75rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        取消
+                    </button>
                 </div>
             </div>
         </div>
@@ -2035,6 +2149,318 @@
             }
         }
 
+        // ===== 自動回覆系統管理 =====
+        async function loadAutoReply() {
+            try {
+                const response = await fetch('/api/auto-reply/' + GUILD_ID);
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('auto-reply-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+                    return;
+                }
+                
+                // 更新系統狀態開關
+                const systemToggle = document.getElementById('auto-reply-system-toggle');
+                const systemStatus = document.getElementById('auto-reply-system-status');
+                systemToggle.checked = data.enabled !== false;
+                systemStatus.textContent = data.enabled !== false ? '🟢 已啟用' : '🔴 已停用';
+                systemStatus.style.color = data.enabled !== false ? '#10b981' : '#888';
+                
+                const rules = data.rules || [];
+                
+                if (rules.length === 0) {
+                    document.getElementById('auto-reply-data').innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #888;">
+                            <p>📝 目前沒有任何自動回覆規則</p>
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem;">點擊上方「添加規則」按鈕開始創建</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = `
+                    <div style="margin-bottom: 1rem; color: #888;">
+                        共有 ${rules.length} 條規則
+                    </div>
+                    <div style="display: grid; gap: 1rem;">
+                `;
+                
+                for (const rule of rules) {
+                    const statusColor = rule.enabled ? '#10b981' : '#888';
+                    const statusIcon = rule.enabled ? '🟢' : '🔴';
+                    const matchTypeLabels = {
+                        'exact': '完全匹配',
+                        'contains': '包含關鍵詞',
+                        'starts_with': '以...開頭',
+                        'ends_with': '以...結尾',
+                        'regex': '正則表達式'
+                    };
+                    const replyTypeLabels = {
+                        'message': '普通消息',
+                        'reply': '回覆消息',
+                        'dm': '私訊用戶',
+                        'react': '添加反應'
+                    };
+                    
+                    html += `
+                        <div style="background: #1a1a1a; padding: 1.25rem; border-left: 4px solid ${statusColor}; border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #fff; font-size: 1.1rem; margin-bottom: 0.5rem;">
+                                        ${statusIcon} 規則 #${rule.id}
+                                        ${rule.trigger_once ? '<span style="background: #2563eb; color: white; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 3px; margin-left: 0.5rem;">僅觸發一次</span>' : ''}
+                                    </div>
+                                    <div style="color: #888; font-size: 0.85rem;">
+                                        創建於: ${new Date(rule.created_at).toLocaleString('zh-TW')}
+                                        ${rule.last_triggered ? ' | 最後觸發: ' + new Date(rule.last_triggered).toLocaleString('zh-TW') : ''}
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button onclick="editAutoReplyRule(${rule.id})" 
+                                            style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                        編輯
+                                    </button>
+                                    <button onclick="toggleAutoReplyRule(${rule.id}, ${!rule.enabled})" 
+                                            style="padding: 0.5rem 1rem; background: ${rule.enabled ? '#f59e0b' : '#10b981'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                        ${rule.enabled ? '停用' : '啟用'}
+                                    </button>
+                                    <button onclick="deleteAutoReplyRule(${rule.id})" 
+                                            style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                        刪除
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                <div style="background: #2b2b2b; padding: 0.75rem; border-radius: 4px;">
+                                    <div style="color: #888; font-size: 0.85rem; margin-bottom: 0.25rem;">觸發詞</div>
+                                    <div style="color: #fff; font-family: monospace;">${rule.trigger}</div>
+                                </div>
+                                <div style="background: #2b2b2b; padding: 0.75rem; border-radius: 4px;">
+                                    <div style="color: #888; font-size: 0.85rem; margin-bottom: 0.25rem;">觸發次數</div>
+                                    <div style="color: #2563eb; font-weight: 600; font-size: 1.2rem;">${rule.triggered_count || 0} 次</div>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #2b2b2b; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem;">
+                                <div style="color: #888; font-size: 0.85rem; margin-bottom: 0.25rem;">回覆內容</div>
+                                <div style="color: #fff;">${rule.reply_type === 'react' ? '反應: ' + rule.reaction : rule.reply}</div>
+                            </div>
+                            
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem;">
+                                <span style="background: #2b2b2b; color: #888; padding: 0.25rem 0.75rem; border-radius: 3px;">
+                                    匹配: ${matchTypeLabels[rule.match_type] || rule.match_type}
+                                </span>
+                                <span style="background: #2b2b2b; color: #888; padding: 0.25rem 0.75rem; border-radius: 3px;">
+                                    回覆: ${replyTypeLabels[rule.reply_type] || rule.reply_type}
+                                </span>
+                                ${rule.case_sensitive ? '<span style="background: #2563eb; color: white; padding: 0.25rem 0.75rem; border-radius: 3px;">區分大小寫</span>' : ''}
+                                ${rule.mention_user ? '<span style="background: #2563eb; color: white; padding: 0.25rem 0.75rem; border-radius: 3px;">提及用戶</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                document.getElementById('auto-reply-data').innerHTML = html;
+            } catch (error) {
+                console.error('載入自動回覆數據失敗:', error);
+                document.getElementById('auto-reply-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+            }
+        }
+
+        // 開關自動回覆系統
+        async function toggleAutoReplySystem(enabled) {
+            try {
+                const res = await fetch(`/api/auto-reply/${GUILD_ID}/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(enabled ? '✅ 已啟用自動回覆系統' : '⏸️ 已停用自動回覆系統', 'success');
+                    loadAutoReply();
+                } else {
+                    showNotification(data.error || '操作失敗', 'error');
+                }
+            } catch (error) {
+                console.error('切換系統失敗:', error);
+                showNotification('操作失敗', 'error');
+            }
+        }
+
+        // 開關特定規則
+        async function toggleAutoReplyRule(ruleId, enabled) {
+            try {
+                const res = await fetch(`/api/auto-reply/${GUILD_ID}/${ruleId}/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(enabled ? '✅ 已啟用規則' : '⏸️ 已停用規則', 'success');
+                    loadAutoReply();
+                } else {
+                    showNotification(data.error || '操作失敗', 'error');
+                }
+            } catch (error) {
+                console.error('切換規則失敗:', error);
+                showNotification('操作失敗', 'error');
+            }
+        }
+
+        // 打開添加規則模態框
+        function openAddAutoReplyModal() {
+            document.getElementById('modalTitle').textContent = '添加自動回覆規則';
+            document.getElementById('editRuleId').value = '';
+            document.getElementById('triggerInput').value = '';
+            document.getElementById('replyInput').value = '';
+            document.getElementById('matchTypeSelect').value = 'contains';
+            document.getElementById('replyTypeSelect').value = 'message';
+            document.getElementById('reactionInput').value = '👍';
+            document.getElementById('caseSensitiveCheck').checked = false;
+            document.getElementById('mentionUserCheck').checked = false;
+            document.getElementById('triggerOnceCheck').checked = false;
+            document.getElementById('enabledCheck').checked = true;
+            document.getElementById('reactionInputDiv').style.display = 'none';
+            document.getElementById('autoReplyModal').style.display = 'flex';
+        }
+
+        // 編輯規則
+        async function editAutoReplyRule(ruleId) {
+            try {
+                const response = await fetch('/api/auto-reply/' + GUILD_ID);
+                const data = await response.json();
+                const rule = data.rules.find(r => r.id === ruleId);
+                
+                if (!rule) {
+                    showNotification('找不到該規則', 'error');
+                    return;
+                }
+                
+                document.getElementById('modalTitle').textContent = '編輯自動回覆規則 #' + ruleId;
+                document.getElementById('editRuleId').value = ruleId;
+                document.getElementById('triggerInput').value = rule.trigger || '';
+                document.getElementById('replyInput').value = rule.reply || '';
+                document.getElementById('matchTypeSelect').value = rule.match_type || 'contains';
+                document.getElementById('replyTypeSelect').value = rule.reply_type || 'message';
+                document.getElementById('reactionInput').value = rule.reaction || '👍';
+                document.getElementById('caseSensitiveCheck').checked = rule.case_sensitive || false;
+                document.getElementById('mentionUserCheck').checked = rule.mention_user || false;
+                document.getElementById('triggerOnceCheck').checked = rule.trigger_once || false;
+                document.getElementById('enabledCheck').checked = rule.enabled !== false;
+                document.getElementById('reactionInputDiv').style.display = rule.reply_type === 'react' ? 'block' : 'none';
+                document.getElementById('autoReplyModal').style.display = 'flex';
+            } catch (error) {
+                console.error('載入規則失敗:', error);
+                showNotification('載入規則失敗', 'error');
+            }
+        }
+
+        // 關閉模態框
+        function closeAutoReplyModal() {
+            document.getElementById('autoReplyModal').style.display = 'none';
+        }
+
+        // 切換反應輸入框顯示
+        function toggleReactionInput(replyType) {
+            document.getElementById('reactionInputDiv').style.display = replyType === 'react' ? 'block' : 'none';
+        }
+
+        // 保存規則
+        async function saveAutoReply() {
+            const ruleId = document.getElementById('editRuleId').value;
+            const trigger = document.getElementById('triggerInput').value.trim();
+            const reply = document.getElementById('replyInput').value.trim();
+            const matchType = document.getElementById('matchTypeSelect').value;
+            const replyType = document.getElementById('replyTypeSelect').value;
+            const reaction = document.getElementById('reactionInput').value.trim();
+            const caseSensitive = document.getElementById('caseSensitiveCheck').checked;
+            const mentionUser = document.getElementById('mentionUserCheck').checked;
+            const triggerOnce = document.getElementById('triggerOnceCheck').checked;
+            const enabled = document.getElementById('enabledCheck').checked;
+            
+            if (!trigger) {
+                showNotification('請輸入觸發詞', 'error');
+                return;
+            }
+            
+            if (replyType !== 'react' && !reply) {
+                showNotification('請輸入回覆內容', 'error');
+                return;
+            }
+            
+            const ruleData = {
+                trigger,
+                reply: replyType === 'react' ? '' : reply,
+                match_type: matchType,
+                reply_type: replyType,
+                reaction: replyType === 'react' ? reaction : '👍',
+                case_sensitive: caseSensitive,
+                mention_user: mentionUser,
+                trigger_once: triggerOnce,
+                enabled,
+                channel_ids: [],
+                role_ids: []
+            };
+            
+            try {
+                let url, method;
+                if (ruleId) {  // 編輯
+                    url = `/api/auto-reply/${GUILD_ID}/${ruleId}`;
+                    method = 'PUT';
+                } else {  // 新增
+                    url = `/api/auto-reply/${GUILD_ID}`;
+                    method = 'POST';
+                }
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ruleData)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(ruleId ? '✅ 規則已更新' : '✅ 規則已添加', 'success');
+                    closeAutoReplyModal();
+                    loadAutoReply();
+                } else {
+                    showNotification(data.error || '操作失敗', 'error');
+                }
+            } catch (error) {
+                console.error('保存失敗:', error);
+                showNotification('操作失敗', 'error');
+            }
+        }
+
+        // 刪除規則
+        async function deleteAutoReplyRule(ruleId) {
+            if (!confirm('確定要刪除此規則嗎？此操作無法撤銷！')) return;
+            
+            try {
+                const res = await fetch(`/api/auto-reply/${GUILD_ID}/${ruleId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('✅ 規則已刪除', 'success');
+                    loadAutoReply();
+                } else {
+                    showNotification(data.error || '刪除失敗', 'error');
+                }
+            } catch (error) {
+                console.error('刪除失敗:', error);
+                showNotification('刪除失敗', 'error');
+            }
+        }
+
         // 頁面載入時執行
         loadStats();
         loadLevels();
@@ -2048,6 +2474,7 @@
         loadWarnings();
         loadAchievements();
         loadTickets();
+        loadAutoReply();
         
         // 每30秒更新一次數據
         setInterval(() => {
@@ -2063,6 +2490,7 @@
             loadWarnings();
             loadAchievements();
             loadTickets();
+            loadAutoReply();
         }, 30000);
     </script>
 </body>
