@@ -1,369 +1,323 @@
 """
-音乐系统 - 使用 Lavalink 提供音乐播放功能
+音樂播放系統 - 使用 Lavalink
+支持播放、暫停、跳過、隊列管理等功能
 """
 
 import discord
-from discord import app_commands
 from discord.ext import commands
+from discord import app_commands
 import wavelink
+from wavelink.ext import spotify
 import asyncio
 from typing import cast
-import logging
-
-logger = logging.getLogger(__name__)
-
+import os
+from datetime import timedelta
 
 class Music(commands.Cog):
-    """音乐播放系统"""
-    
+    """音樂播放系統"""
+
     def __init__(self, bot):
         self.bot = bot
-        self.node_connected = False
-        
+
     async def cog_load(self):
-        """Cog 加载时连接到 Lavalink"""
-        try:
-            # 从环境变量获取 Lavalink 配置
-            lavalink_uri = self.bot.config.get('LAVALINK_URI', 'http://localhost:2333')
-            lavalink_password = self.bot.config.get('LAVALINK_PASSWORD', 'youshallnotpass')
-            
-            # 连接到 Lavalink 节点
-            node: wavelink.Node = wavelink.Node(
-                uri=lavalink_uri,
-                password=lavalink_password
-            )
-            
-            await wavelink.Pool.connect(client=self.bot, nodes=[node])
-            self.node_connected = True
-            logger.info(f"✅ 已连接到 Lavalink 节点: {lavalink_uri}")
-            
-        except Exception as e:
-            logger.error(f"❌ 连接 Lavalink 失败: {e}")
-            self.node_connected = False
-    
-    async def cog_unload(self):
-        """Cog 卸载时断开 Lavalink 连接"""
-        await wavelink.Pool.close()
-        logger.info("🔌 已断开 Lavalink 连接")
-    
+        """當 Cog 載入時執行"""
+        print("🎵 音樂系統已載入")
+
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
-        """当 Lavalink 节点准备就绪时触发"""
-        logger.info(f"🎵 Lavalink 节点已就绪: {payload.node.identifier}")
-    
+        """當 Lavalink 節點就緒時"""
+        print(f"✅ Lavalink 節點已就緒: {payload.node.identifier}")
+
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
-        """当音轨开始播放时触发"""
-        player: wavelink.Player | None = payload.player
-        if not player:
-            return
-        
-        original: wavelink.Playable | None = payload.original
+        """當歌曲開始播放時"""
+        player: wavelink.Player = payload.player
         track: wavelink.Playable = payload.track
-        
-        embed = discord.Embed(
-            title="🎵 正在播放",
-            description=f"[{track.title}]({track.uri})",
-            color=discord.Color.green()
-        )
-        
-        if track.artwork:
-            embed.set_thumbnail(url=track.artwork)
-        
-        embed.add_field(name="作者", value=track.author, inline=True)
-        embed.add_field(name="時長", value=self._format_duration(track.length), inline=True)
-        
-        if hasattr(player, 'message_channel') and player.message_channel:
-            await player.message_channel.send(embed=embed)
-    
+
+        if player.guild:
+            embed = discord.Embed(
+                title="🎵 正在播放",
+                description=f"**{track.title}**",
+                color=discord.Color.green()
+            )
+            
+            if track.author:
+                embed.add_field(name="作者", value=track.author, inline=True)
+            if track.length:
+                duration = str(timedelta(milliseconds=track.length))
+                embed.add_field(name="時長", value=duration, inline=True)
+            if track.uri:
+                embed.add_field(name="連結", value=f"[點擊這裡]({track.uri})", inline=False)
+            
+            if track.artwork:
+                embed.set_thumbnail(url=track.artwork)
+            
+            # 獲取原始頻道發送訊息
+            if hasattr(player, 'text_channel') and player.text_channel:
+                await player.text_channel.send(embed=embed)
+
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
-        """当音轨结束播放时触发"""
-        player: wavelink.Player | None = payload.player
-        if not player:
-            return
+        """當歌曲結束時"""
+        player: wavelink.Player = payload.player
         
-        # 如果队列为空且没有自动播放，5分钟后自动断开
-        if player.queue.is_empty and not player.autoplay:
-            await asyncio.sleep(300)  # 5分钟
-            if player.queue.is_empty and not player.playing:
-                await player.disconnect()
-                if hasattr(player, 'message_channel') and player.message_channel:
-                    await player.message_channel.send("⏹️ 播放队列为空，已自动离开语音频道")
-    
-    def _format_duration(self, milliseconds: int) -> str:
-        """格式化时长"""
-        seconds = milliseconds // 1000
-        minutes = seconds // 60
-        seconds = seconds % 60
-        hours = minutes // 60
-        minutes = minutes % 60
-        
-        if hours > 0:
-            return f"{hours}:{minutes:02d}:{seconds:02d}"
-        return f"{minutes}:{seconds:02d}"
-    
-    async def ensure_voice(self, interaction: discord.Interaction) -> wavelink.Player | None:
-        """确保用户在语音频道并连接机器人"""
+        # 如果隊列中還有歌曲，自動播放下一首
+        if not player.queue.is_empty:
+            next_track = player.queue.get()
+            await player.play(next_track)
+
+    @app_commands.command(name="加入", description="讓機器人加入你的語音頻道")
+    async def join(self, interaction: discord.Interaction):
+        """加入語音頻道"""
         if not interaction.user.voice:
-            await interaction.response.send_message("❌ 你必須先加入語音頻道！", ephemeral=True)
-            return None
-        
+            await interaction.response.send_message("❌ 你需要先加入一個語音頻道！", ephemeral=True)
+            return
+
         channel = interaction.user.voice.channel
-        
-        # 获取或创建播放器
+
+        try:
+            player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
+            
+            if player:
+                if player.channel == channel:
+                    await interaction.response.send_message("✅ 我已經在你的語音頻道了！", ephemeral=True)
+                    return
+                await player.move_to(channel)
+                await interaction.response.send_message(f"🔄 已移動到 {channel.mention}")
+            else:
+                player = await channel.connect(cls=wavelink.Player)
+                player.text_channel = interaction.channel
+                await interaction.response.send_message(f"✅ 已加入 {channel.mention}")
+                
+        except Exception as e:
+            await interaction.response.send_message(f"❌ 加入頻道時發生錯誤: {str(e)}", ephemeral=True)
+
+    @app_commands.command(name="離開", description="讓機器人離開語音頻道")
+    async def leave(self, interaction: discord.Interaction):
+        """離開語音頻道"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
         if not player:
-            try:
-                player = await channel.connect(cls=wavelink.Player)
-                player.autoplay = wavelink.AutoPlayMode.enabled
-                # 保存消息频道用于发送通知
-                player.message_channel = interaction.channel
-            except Exception as e:
-                await interaction.response.send_message(f"❌ 無法連接到語音頻道: {e}", ephemeral=True)
-                return None
-        elif player.channel.id != channel.id:
-            await interaction.response.send_message("❌ 機器人已在其他語音頻道中！", ephemeral=True)
-            return None
-        
-        return player
-    
+            await interaction.response.send_message("❌ 我還沒有加入任何語音頻道！", ephemeral=True)
+            return
+
+        await player.disconnect()
+        await interaction.response.send_message("👋 已離開語音頻道")
+
     @app_commands.command(name="播放", description="播放音樂")
-    @app_commands.describe(查詢="歌曲名稱、URL 或搜尋關鍵字")
-    async def play(self, interaction: discord.Interaction, 查詢: str):
-        """播放音乐"""
-        if not self.node_connected:
-            await interaction.response.send_message("❌ 音樂系統未就緒，請檢查 Lavalink 連接", ephemeral=True)
-            return
-        
+    @app_commands.describe(搜尋="歌曲名稱或 YouTube/Spotify 連結")
+    async def play(self, interaction: discord.Interaction, 搜尋: str):
+        """播放音樂"""
         await interaction.response.defer()
-        
-        player = await self.ensure_voice(interaction)
-        if not player:
+
+        # 檢查用戶是否在語音頻道
+        if not interaction.user.voice:
+            await interaction.followup.send("❌ 你需要先加入一個語音頻道！")
             return
+
+        player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
-        # 搜索音轨
+        # 如果機器人還沒加入頻道，先加入
+        if not player:
+            channel = interaction.user.voice.channel
+            player = await channel.connect(cls=wavelink.Player)
+            player.text_channel = interaction.channel
+
+        # 搜尋歌曲
         try:
-            tracks: wavelink.Search = await wavelink.Playable.search(查詢)
-            if not tracks:
-                await interaction.followup.send("❌ 找不到相關歌曲")
-                return
+            tracks: wavelink.Search = await wavelink.Playable.search(搜尋)
             
+            if not tracks:
+                await interaction.followup.send("❌ 找不到該歌曲！")
+                return
+
             # 如果是播放列表
             if isinstance(tracks, wavelink.Playlist):
                 added: int = await player.queue.put_wait(tracks)
-                await interaction.followup.send(
-                    f"✅ 已添加播放列表 **{tracks.name}** ({added} 首歌曲)"
-                )
+                await interaction.followup.send(f"✅ 已添加播放列表 **{tracks.name}** ({added} 首歌曲)")
             else:
                 track: wavelink.Playable = tracks[0]
                 await player.queue.put_wait(track)
                 
-                embed = discord.Embed(
-                    title="➕ 已加入隊列",
-                    description=f"[{track.title}]({track.uri})",
-                    color=discord.Color.blue()
-                )
-                
-                if track.artwork:
-                    embed.set_thumbnail(url=track.artwork)
-                
-                embed.add_field(name="作者", value=track.author, inline=True)
-                embed.add_field(name="時長", value=self._format_duration(track.length), inline=True)
-                embed.add_field(name="隊列位置", value=str(player.queue.count), inline=True)
-                
-                await interaction.followup.send(embed=embed)
-            
-            # 如果没有在播放，开始播放
+                if player.playing:
+                    embed = discord.Embed(
+                        title="✅ 已添加到隊列",
+                        description=f"**{track.title}**",
+                        color=discord.Color.blue()
+                    )
+                    if track.author:
+                        embed.add_field(name="作者", value=track.author, inline=True)
+                    if track.length:
+                        duration = str(timedelta(milliseconds=track.length))
+                        embed.add_field(name="時長", value=duration, inline=True)
+                    await interaction.followup.send(embed=embed)
+                else:
+                    await interaction.followup.send(f"🔍 正在搜尋 **{搜尋}**...")
+
+            # 如果沒有正在播放的歌曲，開始播放
             if not player.playing:
-                await player.play(player.queue.get())
-                
+                next_track = player.queue.get()
+                await player.play(next_track)
+
         except Exception as e:
-            logger.error(f"播放音乐失败: {e}")
-            await interaction.followup.send(f"❌ 播放失敗: {str(e)}")
-    
-    @app_commands.command(name="暫停", description="暫停音樂")
+            await interaction.followup.send(f"❌ 播放時發生錯誤: {str(e)}")
+
+    @app_commands.command(name="暫停", description="暫停播放")
     async def pause(self, interaction: discord.Interaction):
-        """暂停音乐"""
+        """暫停播放"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
         if not player or not player.playing:
-            await interaction.response.send_message("❌ 目前沒有正在播放的音樂", ephemeral=True)
+            await interaction.response.send_message("❌ 目前沒有正在播放的歌曲！", ephemeral=True)
             return
-        
-        await player.pause(not player.paused)
-        
-        if player.paused:
-            await interaction.response.send_message("⏸️ 已暫停播放")
-        else:
-            await interaction.response.send_message("▶️ 繼續播放")
-    
-    @app_commands.command(name="停止", description="停止音樂並清空隊列")
-    async def stop(self, interaction: discord.Interaction):
-        """停止音乐"""
+
+        await player.pause(True)
+        await interaction.response.send_message("⏸️ 已暫停播放")
+
+    @app_commands.command(name="繼續", description="繼續播放")
+    async def resume(self, interaction: discord.Interaction):
+        """繼續播放"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
         if not player:
-            await interaction.response.send_message("❌ 機器人未連接到語音頻道", ephemeral=True)
+            await interaction.response.send_message("❌ 目前沒有正在播放的歌曲！", ephemeral=True)
             return
+
+        await player.pause(False)
+        await interaction.response.send_message("▶️ 已繼續播放")
+
+    @app_commands.command(name="停止", description="停止播放並清空隊列")
+    async def stop(self, interaction: discord.Interaction):
+        """停止播放"""
+        player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
-        await player.disconnect()
-        await interaction.response.send_message("⏹️ 已停止播放並離開語音頻道")
-    
-    @app_commands.command(name="跳過", description="跳過當前歌曲")
+        if not player:
+            await interaction.response.send_message("❌ 目前沒有正在播放的歌曲！", ephemeral=True)
+            return
+
+        player.queue.clear()
+        await player.stop()
+        await interaction.response.send_message("⏹️ 已停止播放並清空隊列")
+
+    @app_commands.command(name="跳過", description="跳過目前播放的歌曲")
     async def skip(self, interaction: discord.Interaction):
-        """跳过当前歌曲"""
+        """跳過歌曲"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
         if not player or not player.playing:
-            await interaction.response.send_message("❌ 目前沒有正在播放的音樂", ephemeral=True)
+            await interaction.response.send_message("❌ 目前沒有正在播放的歌曲！", ephemeral=True)
             return
+
+        await player.skip()
+        await interaction.response.send_message("⏭️ 已跳過目前的歌曲")
+
+    @app_commands.command(name="音量", description="調整播放音量")
+    @app_commands.describe(音量="音量大小 (0-100)")
+    async def volume(self, interaction: discord.Interaction, 音量: int):
+        """調整音量"""
+        player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
-        await player.skip(force=True)
-        await interaction.response.send_message("⏭️ 已跳過當前歌曲")
-    
+        if not player:
+            await interaction.response.send_message("❌ 我還沒有加入任何語音頻道！", ephemeral=True)
+            return
+
+        if 音量 < 0 or 音量 > 100:
+            await interaction.response.send_message("❌ 音量必須在 0-100 之間！", ephemeral=True)
+            return
+
+        await player.set_volume(音量)
+        await interaction.response.send_message(f"🔊 音量已調整為 {音量}%")
+
     @app_commands.command(name="隊列", description="顯示播放隊列")
     async def queue(self, interaction: discord.Interaction):
-        """显示播放队列"""
+        """顯示隊列"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
         if not player:
-            await interaction.response.send_message("❌ 機器人未連接到語音頻道", ephemeral=True)
+            await interaction.response.send_message("❌ 我還沒有加入任何語音頻道！", ephemeral=True)
             return
-        
-        if player.queue.is_empty and not player.current:
-            await interaction.response.send_message("📝 播放隊列為空", ephemeral=True)
+
+        if player.queue.is_empty:
+            await interaction.response.send_message("📝 隊列是空的！")
             return
+
+        embed = discord.Embed(
+            title="📝 播放隊列",
+            description=f"隊列中有 {player.queue.count} 首歌曲",
+            color=discord.Color.blue()
+        )
+
+        # 顯示前 10 首歌曲
+        queue_list = []
+        for i, track in enumerate(list(player.queue)[:10], 1):
+            duration = str(timedelta(milliseconds=track.length)) if track.length else "未知"
+            queue_list.append(f"`{i}.` **{track.title}** ({duration})")
+
+        embed.description = "\n".join(queue_list)
         
-        embed = discord.Embed(title="🎵 播放隊列", color=discord.Color.blue())
-        
-        # 当前播放
-        if player.current:
-            current = player.current
-            embed.add_field(
-                name="▶️ 正在播放",
-                value=f"[{current.title}]({current.uri})\n`{self._format_duration(player.position)}/{self._format_duration(current.length)}`",
-                inline=False
-            )
-        
-        # 队列中的歌曲
-        if not player.queue.is_empty:
-            queue_list = []
-            for i, track in enumerate(list(player.queue)[:10], 1):
-                queue_list.append(f"`{i}.` [{track.title}]({track.uri}) - `{self._format_duration(track.length)}`")
-            
-            embed.add_field(
-                name=f"📋 接下來 ({player.queue.count} 首)",
-                value="\n".join(queue_list),
-                inline=False
-            )
-            
-            if player.queue.count > 10:
-                embed.set_footer(text=f"還有 {player.queue.count - 10} 首歌曲...")
-        
+        if player.queue.count > 10:
+            embed.set_footer(text=f"還有 {player.queue.count - 10} 首歌曲...")
+
         await interaction.response.send_message(embed=embed)
-    
-    @app_commands.command(name="當前", description="顯示當前播放的歌曲")
-    async def now_playing(self, interaction: discord.Interaction):
-        """显示当前播放的歌曲"""
+
+    @app_commands.command(name="正在播放", description="顯示目前播放的歌曲")
+    async def nowplaying(self, interaction: discord.Interaction):
+        """顯示正在播放的歌曲"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
-        if not player or not player.current:
-            await interaction.response.send_message("❌ 目前沒有正在播放的音樂", ephemeral=True)
+        if not player or not player.playing:
+            await interaction.response.send_message("❌ 目前沒有正在播放的歌曲！", ephemeral=True)
             return
-        
+
         track = player.current
         
         embed = discord.Embed(
             title="🎵 正在播放",
-            description=f"[{track.title}]({track.uri})",
+            description=f"**{track.title}**",
             color=discord.Color.green()
         )
         
+        if track.author:
+            embed.add_field(name="作者", value=track.author, inline=True)
+        if track.length:
+            duration = str(timedelta(milliseconds=track.length))
+            position = str(timedelta(milliseconds=player.position))
+            embed.add_field(name="進度", value=f"{position} / {duration}", inline=True)
+        
+        embed.add_field(name="音量", value=f"{player.volume}%", inline=True)
+        
+        if track.uri:
+            embed.add_field(name="連結", value=f"[點擊這裡]({track.uri})", inline=False)
+        
         if track.artwork:
             embed.set_thumbnail(url=track.artwork)
-        
-        embed.add_field(name="作者", value=track.author, inline=True)
-        embed.add_field(name="時長", value=self._format_duration(track.length), inline=True)
-        embed.add_field(name="進度", value=f"{self._format_duration(player.position)}/{self._format_duration(track.length)}", inline=True)
-        
-        # 进度条
-        progress = int((player.position / track.length) * 20)
-        progress_bar = "▓" * progress + "░" * (20 - progress)
-        embed.add_field(name="⏱️", value=f"`{progress_bar}`", inline=False)
-        
-        if player.paused:
-            embed.add_field(name="狀態", value="⏸️ 已暫停", inline=True)
-        
+
         await interaction.response.send_message(embed=embed)
-    
-    @app_commands.command(name="音量", description="調整播放音量")
-    @app_commands.describe(音量="音量大小 (0-100)")
-    async def volume(self, interaction: discord.Interaction, 音量: int):
-        """调整音量"""
-        if not 0 <= 音量 <= 100:
-            await interaction.response.send_message("❌ 音量必須在 0-100 之間", ephemeral=True)
-            return
-        
-        player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
-        
-        if not player:
-            await interaction.response.send_message("❌ 機器人未連接到語音頻道", ephemeral=True)
-            return
-        
-        await player.set_volume(音量)
-        await interaction.response.send_message(f"🔊 音量已設定為 {音量}%")
-    
-    @app_commands.command(name="清空隊列", description="清空播放隊列")
-    async def clear(self, interaction: discord.Interaction):
-        """清空队列"""
-        player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
-        
-        if not player:
-            await interaction.response.send_message("❌ 機器人未連接到語音頻道", ephemeral=True)
-            return
-        
-        player.queue.clear()
-        await interaction.response.send_message("🗑️ 已清空播放隊列")
-    
-    @app_commands.command(name="洗牌", description="隨機打亂隊列順序")
-    async def shuffle(self, interaction: discord.Interaction):
-        """随机打乱队列"""
-        player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
-        
-        if not player or player.queue.is_empty:
-            await interaction.response.send_message("❌ 播放隊列為空", ephemeral=True)
-            return
-        
-        player.queue.shuffle()
-        await interaction.response.send_message("🔀 已隨機打亂隊列順序")
-    
+
     @app_commands.command(name="循環", description="設定循環模式")
     @app_commands.describe(模式="循環模式 (關閉/單曲/隊列)")
     @app_commands.choices(模式=[
-        app_commands.Choice(name="關閉", value="off"),
-        app_commands.Choice(name="單曲循環", value="track"),
-        app_commands.Choice(name="隊列循環", value="queue")
+        app_commands.Choice(name="關閉", value=0),
+        app_commands.Choice(name="單曲循環", value=1),
+        app_commands.Choice(name="隊列循環", value=2)
     ])
-    async def loop(self, interaction: discord.Interaction, 模式: str):
-        """设置循环模式"""
+    async def loop(self, interaction: discord.Interaction, 模式: int):
+        """設定循環模式"""
         player: wavelink.Player = cast(wavelink.Player, interaction.guild.voice_client)
         
         if not player:
-            await interaction.response.send_message("❌ 機器人未連接到語音頻道", ephemeral=True)
+            await interaction.response.send_message("❌ 我還沒有加入任何語音頻道！", ephemeral=True)
             return
-        
-        if 模式 == "off":
+
+        if 模式 == 0:
             player.queue.mode = wavelink.QueueMode.normal
             await interaction.response.send_message("🔁 已關閉循環")
-        elif 模式 == "track":
+        elif 模式 == 1:
             player.queue.mode = wavelink.QueueMode.loop
             await interaction.response.send_message("🔂 已開啟單曲循環")
-        elif 模式 == "queue":
+        elif 模式 == 2:
             player.queue.mode = wavelink.QueueMode.loop_all
             await interaction.response.send_message("🔁 已開啟隊列循環")
-
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
