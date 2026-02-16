@@ -2153,10 +2153,28 @@
         async function loadAutoReply() {
             try {
                 const response = await fetch('/api/auto-reply/' + GUILD_ID);
+                
+                if (!response.ok) {
+                    console.error('API 請求失敗:', response.status, response.statusText);
+                    document.getElementById('auto-reply-data').innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #dc2626;">
+                            <p>❌ 載入失敗 (${response.status})</p>
+                            <p style="font-size: 0.9rem; color: #888; margin-top: 0.5rem;">請檢查網絡連接或重新整理頁面</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 if (data.error) {
-                    document.getElementById('auto-reply-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+                    console.error('API 返回錯誤:', data.error);
+                    document.getElementById('auto-reply-data').innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #dc2626;">
+                            <p>❌ 載入失敗</p>
+                            <p style="font-size: 0.9rem; color: #888; margin-top: 0.5rem;">${data.error}</p>
+                        </div>
+                    `;
                     return;
                 }
                 
@@ -2266,7 +2284,15 @@
                 document.getElementById('auto-reply-data').innerHTML = html;
             } catch (error) {
                 console.error('載入自動回覆數據失敗:', error);
-                document.getElementById('auto-reply-data').innerHTML = '<p style="color: #dc2626;">載入失敗</p>';
+                document.getElementById('auto-reply-data').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #dc2626;">
+                        <p>❌ 載入失敗</p>
+                        <p style="font-size: 0.9rem; color: #888; margin-top: 0.5rem;">${error.message || '未知錯誤'}</p>
+                        <button onclick="loadAutoReply()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            🔄 重新載入
+                        </button>
+                    </div>
+                `;
             }
         }
 
@@ -2278,17 +2304,25 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ enabled })
                 });
+                
+                if (!res.ok) {
+                    console.error('API 請求失敗:', res.status, res.statusText);
+                    showNotification(`操作失敗 (${res.status})`, 'error');
+                    return;
+                }
+                
                 const data = await res.json();
                 
                 if (data.success) {
                     showNotification(enabled ? '✅ 已啟用自動回覆系統' : '⏸️ 已停用自動回覆系統', 'success');
                     loadAutoReply();
                 } else {
+                    console.error('API 返回錯誤:', data.error);
                     showNotification(data.error || '操作失敗', 'error');
                 }
             } catch (error) {
                 console.error('切換系統失敗:', error);
-                showNotification('操作失敗', 'error');
+                showNotification(`操作失敗: ${error.message || '未知錯誤'}`, 'error');
             }
         }
 
@@ -2300,17 +2334,25 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ enabled })
                 });
+                
+                if (!res.ok) {
+                    console.error('API 請求失敗:', res.status, res.statusText);
+                    showNotification(`操作失敗 (${res.status})`, 'error');
+                    return;
+                }
+                
                 const data = await res.json();
                 
                 if (data.success) {
                     showNotification(enabled ? '✅ 已啟用規則' : '⏸️ 已停用規則', 'success');
                     loadAutoReply();
                 } else {
+                    console.error('API 返回錯誤:', data.error);
                     showNotification(data.error || '操作失敗', 'error');
                 }
             } catch (error) {
                 console.error('切換規則失敗:', error);
-                showNotification('操作失敗', 'error');
+                showNotification(`操作失敗: ${error.message || '未知錯誤'}`, 'error');
             }
         }
 
@@ -2335,8 +2377,22 @@
         async function editAutoReplyRule(ruleId) {
             try {
                 const response = await fetch('/api/auto-reply/' + GUILD_ID);
+                
+                if (!response.ok) {
+                    console.error('API 請求失敗:', response.status, response.statusText);
+                    showNotification(`載入規則失敗 (${response.status})`, 'error');
+                    return;
+                }
+                
                 const data = await response.json();
-                const rule = data.rules.find(r => r.id === ruleId);
+                
+                if (data.error) {
+                    console.error('API 返回錯誤:', data.error);
+                    showNotification(data.error || '載入規則失敗', 'error');
+                    return;
+                }
+                
+                const rule = data.rules ? data.rules.find(r => r.id === ruleId) : null;
                 
                 if (!rule) {
                     showNotification('找不到該規則', 'error');
@@ -2358,7 +2414,7 @@
                 document.getElementById('autoReplyModal').style.display = 'flex';
             } catch (error) {
                 console.error('載入規則失敗:', error);
-                showNotification('載入規則失敗', 'error');
+                showNotification(`載入規則失敗: ${error.message || '未知錯誤'}`, 'error');
             }
         }
 
@@ -2424,6 +2480,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(ruleData)
                 });
+                
+                if (!res.ok) {
+                    console.error('API 請求失敗:', res.status, res.statusText);
+                    showNotification(`操作失敗 (${res.status})`, 'error');
+                    return;
+                }
+                
                 const data = await res.json();
                 
                 if (data.success) {
@@ -2431,11 +2494,12 @@
                     closeAutoReplyModal();
                     loadAutoReply();
                 } else {
+                    console.error('API 返回錯誤:', data.error);
                     showNotification(data.error || '操作失敗', 'error');
                 }
             } catch (error) {
                 console.error('保存失敗:', error);
-                showNotification('操作失敗', 'error');
+                showNotification(`操作失敗: ${error.message || '未知錯誤'}`, 'error');
             }
         }
 
@@ -2447,17 +2511,25 @@
                 const res = await fetch(`/api/auto-reply/${GUILD_ID}/${ruleId}`, {
                     method: 'DELETE'
                 });
+                
+                if (!res.ok) {
+                    console.error('API 請求失敗:', res.status, res.statusText);
+                    showNotification(`刪除失敗 (${res.status})`, 'error');
+                    return;
+                }
+                
                 const data = await res.json();
                 
                 if (data.success) {
                     showNotification('✅ 規則已刪除', 'success');
                     loadAutoReply();
                 } else {
+                    console.error('API 返回錯誤:', data.error);
                     showNotification(data.error || '刪除失敗', 'error');
                 }
             } catch (error) {
                 console.error('刪除失敗:', error);
-                showNotification('刪除失敗', 'error');
+                showNotification(`刪除失敗: ${error.message || '未知錯誤'}`, 'error');
             }
         }
 
