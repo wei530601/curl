@@ -486,6 +486,9 @@
             <div class="sidebar-item" onclick="showSection('auto-reply')">
                 自動回覆
             </div>
+            <div class="sidebar-item" onclick="showSection('security')">
+                安全系統
+            </div>
         </div>
 
         <div class="content">
@@ -706,6 +709,75 @@
                             style="flex: 1; padding: 0.75rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
                         取消
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全系統 -->
+    <div id="section-security" class="content-section" style="display: none;">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 class="section-title" style="margin: 0;">安全系統管理</h2>
+                <label class="switch">
+                    <input type="checkbox" id="securityToggle" onchange="toggleSecuritySystem()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- 配置區域 -->
+            <div style="background: #1e1e1e; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1rem 0; color: #fff; font-size: 1.1rem;">系統配置</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #888;">處罰類型</label>
+                        <select id="actionType" onchange="updateSecurityConfig()" 
+                                style="width: 100%; padding: 0.75rem; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                            <option value="timeout">超時（Timeout）</option>
+                            <option value="delete">僅刪除消息</option>
+                            <option value="warn">警告</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #888;">超時時長（秒）</label>
+                        <input type="number" id="timeoutDuration" min="1" max="2419200" value="60" onchange="updateSecurityConfig()"
+                               style="width: 100%; padding: 0.75rem; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #888;">匹配模式</label>
+                        <select id="matchType" onchange="updateSecurityConfig()"
+                                style="width: 100%; padding: 0.75rem; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                            <option value="contains">包含匹配</option>
+                            <option value="exact">完全匹配</option>
+                            <option value="regex">正則匹配</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #888;">區分大小寫</label>
+                        <label class="switch">
+                            <input type="checkbox" id="caseSensitive" onchange="updateSecurityConfig()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 違禁詞管理 -->
+            <div style="background: #1e1e1e; padding: 1.5rem; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; color: #fff; font-size: 1.1rem;">違禁詞列表</h3>
+                    <button onclick="showAddBannedWordDialog()" 
+                            style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                        ➕ 添加違禁詞
+                    </button>
+                </div>
+                
+                <div id="bannedWordsList" style="margin-top: 1rem;">
+                    <!-- 違禁詞列表將在這裡動態生成 -->
                 </div>
             </div>
         </div>
@@ -2547,6 +2619,7 @@
         loadAchievements();
         loadTickets();
         loadAutoReply();
+        loadSecurity();
         
         // 每30秒更新一次數據
         setInterval(() => {
@@ -2563,7 +2636,197 @@
             loadAchievements();
             loadTickets();
             loadAutoReply();
+            loadSecurity();
         }, 30000);
+
+        // ===== 安全系統管理 =====
+        
+        async function loadSecurity() {
+            try {
+                const res = await fetch(`/api/security/${GUILD_ID}`);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const data = await res.json();
+                
+                // 更新開關狀態
+                document.getElementById('securityToggle').checked = data.enabled || false;
+                
+                // 更新配置
+                document.getElementById('actionType').value = data.action_type || 'timeout';
+                document.getElementById('timeoutDuration').value = data.timeout_duration || 60;
+                document.getElementById('matchType').value = data.match_type || 'contains';
+                document.getElementById('caseSensitive').checked = data.case_sensitive || false;
+                
+                // 顯示違禁詞列表
+                const bannedWordsList = document.getElementById('bannedWordsList');
+                if (!data.banned_words || data.banned_words.length === 0) {
+                    bannedWordsList.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #888;">
+                            <p>📝 目前沒有設定違禁詞</p>
+                        </div>
+                    `;
+                } else {
+                    bannedWordsList.innerHTML = data.banned_words.map((word, index) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #2a2a2a; border-radius: 4px; margin-bottom: 0.5rem;">
+                            <span style="color: #fff; font-family: monospace;">${escapeHtml(word)}</span>
+                            <button onclick="deleteBannedWord('${escapeHtml(word)}')" 
+                                    style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🗑️ 刪除
+                            </button>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                console.error('載入安全系統數據失敗:', error);
+                const bannedWordsList = document.getElementById('bannedWordsList');
+                if (bannedWordsList) {
+                    bannedWordsList.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #dc2626;">
+                            <p>❌ 載入失敗: ${error.message}</p>
+                            <button onclick="loadSecurity()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                重試
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        // 開關安全系統
+        async function toggleSecuritySystem() {
+            const enabled = document.getElementById('securityToggle').checked;
+            
+            try {
+                const res = await fetch(`/api/security/${GUILD_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification(enabled ? '✅ 已啟用安全系統' : '⏸️ 已停用安全系統', 'success');
+                } else {
+                    throw new Error(data.error || '操作失敗');
+                }
+            } catch (error) {
+                console.error('切換安全系統失敗:', error);
+                showNotification('操作失敗: ' + error.message, 'error');
+                // 恢復開關狀態
+                document.getElementById('securityToggle').checked = !enabled;
+            }
+        }
+        
+        // 更新安全配置
+        async function updateSecurityConfig() {
+            try {
+                const config = {
+                    action_type: document.getElementById('actionType').value,
+                    timeout_duration: parseInt(document.getElementById('timeoutDuration').value),
+                    match_type: document.getElementById('matchType').value,
+                    case_sensitive: document.getElementById('caseSensitive').checked
+                };
+                
+                const res = await fetch(`/api/security/${GUILD_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('✅ 配置已更新', 'success');
+                } else {
+                    throw new Error(data.error || '操作失敗');
+                }
+            } catch (error) {
+                console.error('更新配置失敗:', error);
+                showNotification('操作失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // 顯示添加違禁詞對話框
+        function showAddBannedWordDialog() {
+            const word = prompt('請輸入要添加的違禁詞:');
+            if (word && word.trim()) {
+                addBannedWord(word.trim());
+            }
+        }
+        
+        // 添加違禁詞
+        async function addBannedWord(word) {
+            try {
+                const res = await fetch(`/api/security/${GUILD_ID}/banned-words`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word })
+                });
+                
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('✅ 違禁詞已添加', 'success');
+                    loadSecurity();
+                } else {
+                    throw new Error(data.error || '操作失敗');
+                }
+            } catch (error) {
+                console.error('添加違禁詞失敗:', error);
+                showNotification('操作失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // 刪除違禁詞
+        async function deleteBannedWord(word) {
+            if (!confirm(`確定要刪除違禁詞「${word}」嗎？`)) {
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/security/${GUILD_ID}/banned-words`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word })
+                });
+                
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('✅ 違禁詞已刪除', 'success');
+                    loadSecurity();
+                } else {
+                    throw new Error(data.error || '操作失敗');
+                }
+            } catch (error) {
+                console.error('刪除違禁詞失敗:', error);
+                showNotification('操作失敗: ' + error.message, 'error');
+            }
+        }
     </script>
 </body>
 </html>
+

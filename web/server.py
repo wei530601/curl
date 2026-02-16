@@ -80,6 +80,12 @@ class WebServer:
         self.app.router.add_delete('/api/auto-reply/{guild_id}/{rule_id}', self.api_delete_auto_reply)
         self.app.router.add_post('/api/auto-reply/{guild_id}/toggle', self.api_toggle_auto_reply_system)
         self.app.router.add_post('/api/auto-reply/{guild_id}/{rule_id}/toggle', self.api_toggle_auto_reply_rule)
+        
+        # 安全系統 API
+        self.app.router.add_get('/api/security/{guild_id}', self.api_get_security)
+        self.app.router.add_post('/api/security/{guild_id}', self.api_update_security)
+        self.app.router.add_post('/api/security/{guild_id}/banned-words', self.api_add_banned_word)
+        self.app.router.add_delete('/api/security/{guild_id}/banned-words', self.api_delete_banned_word)
     
     async def index(self, request):
         """主頁"""
@@ -1550,6 +1556,195 @@ class WebServer:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
             return web.json_response({'success': True, 'enabled': enabled})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    # ==================== 安全系統 API ====================
+    
+    async def api_get_security(self, request):
+        """獲取安全系統設定"""
+        try:
+            guild_id = request.match_info['guild_id']
+            
+            # 檢查權限
+            session = await get_session(request)
+            user = session.get('user')
+            if not user:
+                return web.json_response({'error': '未登入'}, status=401)
+            
+            # 獲取數據
+            filepath = f"./data/{guild_id}/security.json"
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {
+                    "enabled": True,
+                    "banned_words": [],
+                    "timeout_duration": 60,
+                    "action_type": "timeout",
+                    "whitelist_roles": [],
+                    "whitelist_channels": [],
+                    "case_sensitive": False,
+                    "match_type": "contains"
+                }
+            
+            return web.json_response(data)
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_update_security(self, request):
+        """更新安全系統設定"""
+        try:
+            guild_id = request.match_info['guild_id']
+            
+            # 檢查權限
+            session = await get_session(request)
+            user = session.get('user')
+            if not user:
+                return web.json_response({'error': '未登入'}, status=401)
+            
+            # 讀取請求數據
+            data = await request.json()
+            
+            # 驗證數據
+            if 'timeout_duration' in data:
+                timeout = data['timeout_duration']
+                if not isinstance(timeout, int) or timeout < 1 or timeout > 2419200:
+                    return web.json_response({'error': '超時時長必須在 1-2419200 秒之間'}, status=400)
+            
+            if 'action_type' in data:
+                if data['action_type'] not in ['timeout', 'delete', 'warn']:
+                    return web.json_response({'error': '無效的處罰類型'}, status=400)
+            
+            if 'match_type' in data:
+                if data['match_type'] not in ['contains', 'exact', 'regex']:
+                    return web.json_response({'error': '無效的匹配模式'}, status=400)
+            
+            # 保存數據
+            folder = f"./data/{guild_id}"
+            os.makedirs(folder, exist_ok=True)
+            
+            filepath = f"{folder}/security.json"
+            
+            # 讀取現有數據或創建新數據
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            else:
+                existing_data = {
+                    "enabled": True,
+                    "banned_words": [],
+                    "timeout_duration": 60,
+                    "action_type": "timeout",
+                    "whitelist_roles": [],
+                    "whitelist_channels": [],
+                    "case_sensitive": False,
+                    "match_type": "contains"
+                }
+            
+            # 更新數據
+            existing_data.update(data)
+            
+            # 保存
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'data': existing_data})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_add_banned_word(self, request):
+        """添加違禁詞"""
+        try:
+            guild_id = request.match_info['guild_id']
+            
+            # 檢查權限
+            session = await get_session(request)
+            user = session.get('user')
+            if not user:
+                return web.json_response({'error': '未登入'}, status=401)
+            
+            # 讀取請求數據
+            data = await request.json()
+            word = data.get('word', '').strip()
+            
+            if not word:
+                return web.json_response({'error': '違禁詞不能為空'}, status=400)
+            
+            # 讀取現有數據
+            folder = f"./data/{guild_id}"
+            os.makedirs(folder, exist_ok=True)
+            filepath = f"{folder}/security.json"
+            
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    security_data = json.load(f)
+            else:
+                security_data = {
+                    "enabled": True,
+                    "banned_words": [],
+                    "timeout_duration": 60,
+                    "action_type": "timeout",
+                    "whitelist_roles": [],
+                    "whitelist_channels": [],
+                    "case_sensitive": False,
+                    "match_type": "contains"
+                }
+            
+            # 檢查是否已存在
+            if word in security_data['banned_words']:
+                return web.json_response({'error': '該違禁詞已存在'}, status=400)
+            
+            # 添加違禁詞
+            security_data['banned_words'].append(word)
+            
+            # 保存
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(security_data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'word': word, 'banned_words': security_data['banned_words']})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_delete_banned_word(self, request):
+        """刪除違禁詞"""
+        try:
+            guild_id = request.match_info['guild_id']
+            
+            # 檢查權限
+            session = await get_session(request)
+            user = session.get('user')
+            if not user:
+                return web.json_response({'error': '未登入'}, status=401)
+            
+            # 讀取請求數據
+            data = await request.json()
+            word = data.get('word', '').strip()
+            
+            if not word:
+                return web.json_response({'error': '違禁詞不能為空'}, status=400)
+            
+            # 讀取現有數據
+            filepath = f"./data/{guild_id}/security.json"
+            if not os.path.exists(filepath):
+                return web.json_response({'error': '安全系統數據不存在'}, status=404)
+            
+            with open(filepath, 'r', encoding='utf-8') as f:
+                security_data = json.load(f)
+            
+            # 檢查是否存在
+            if word not in security_data['banned_words']:
+                return web.json_response({'error': '該違禁詞不存在'}, status=404)
+            
+            # 移除違禁詞
+            security_data['banned_words'].remove(word)
+            
+            # 保存
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(security_data, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True, 'word': word, 'banned_words': security_data['banned_words']})
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
     
