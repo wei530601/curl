@@ -788,6 +788,18 @@
     <script>
         const GUILD_ID = '{GUILD_ID}';
         
+        // HTML 轉義函數（防止 XSS 攻擊）
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
         // 漢堡菜單切換函數
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
