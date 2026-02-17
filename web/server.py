@@ -209,59 +209,42 @@ class WebServer:
         if not session.get('user'):
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
-        user = session.get('user')
-        is_dev = self.is_developer(user['id'])
+        access_token = session.get('access_token')
         
         # 獲取機器人所在的伺服器
         bot_guild_ids = {str(guild.id) for guild in self.bot.guilds}
         
-        accessible_guilds = []
+        # 獲取用戶的 Discord 伺服器
+        async with ClientSession() as client_session:
+            headers = {'Authorization': f"Bearer {access_token}"}
+            async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
+                if resp.status != 200:
+                    return web.json_response({'error': 'Failed to fetch guilds'}, status=500)
+                user_guilds = await resp.json()
         
-        if is_dev:
-            # 開發者可以看到所有機器人所在的伺服器
-            for bot_guild in self.bot.guilds:
-                icon_url = str(bot_guild.icon.url) if bot_guild.icon else None
+        # 過濾有管理權限且機器人也在的伺服器
+        accessible_guilds = []
+        for guild in user_guilds:
+            permissions = int(guild.get('permissions', 0))
+            guild_id = guild['id']
+            
+            # 檢查管理員權限或管理伺服器權限
+            if (permissions & 0x8 or permissions & 0x20) and guild_id in bot_guild_ids:
+                # 獲取伺服器圖標
+                icon_url = None
+                if guild.get('icon'):
+                    icon_url = f"https://cdn.discordapp.com/icons/{guild_id}/{guild['icon']}.png"
+                
+                # 獲取成員數量
+                bot_guild = self.bot.get_guild(int(guild_id))
+                member_count = bot_guild.member_count if bot_guild else 0
                 
                 accessible_guilds.append({
-                    'id': str(bot_guild.id),
-                    'name': bot_guild.name,
+                    'id': guild_id,
+                    'name': guild['name'],
                     'icon': icon_url,
-                    'member_count': bot_guild.member_count
+                    'member_count': member_count
                 })
-        else:
-            # 非開發者需要有管理權限
-            access_token = session.get('access_token')
-            
-            # 獲取用戶的 Discord 伺服器
-            async with ClientSession() as client_session:
-                headers = {'Authorization': f"Bearer {access_token}"}
-                async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
-                    if resp.status != 200:
-                        return web.json_response({'error': 'Failed to fetch guilds'}, status=500)
-                    user_guilds = await resp.json()
-            
-            # 過濾有管理權限且機器人也在的伺服器
-            for guild in user_guilds:
-                permissions = int(guild.get('permissions', 0))
-                guild_id = guild['id']
-                
-                # 檢查管理員權限或管理伺服器權限
-                if (permissions & 0x8 or permissions & 0x20) and guild_id in bot_guild_ids:
-                    # 獲取伺服器圖標
-                    icon_url = None
-                    if guild.get('icon'):
-                        icon_url = f"https://cdn.discordapp.com/icons/{guild_id}/{guild['icon']}.png"
-                    
-                    # 獲取成員數量
-                    bot_guild = self.bot.get_guild(int(guild_id))
-                    member_count = bot_guild.member_count if bot_guild else 0
-                    
-                    accessible_guilds.append({
-                        'id': guild_id,
-                        'name': guild['name'],
-                        'icon': icon_url,
-                        'member_count': member_count
-                    })
         
         return web.json_response({'guilds': accessible_guilds})
     
