@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>開發者面板 - CURL Bot</title>
+    <title>開發者面板 - Discord 機器人</title>
     <style>
         * {
             margin: 0;
@@ -12,765 +12,793 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', 'Microsoft JhengHei', -apple-system, sans-serif;
+            background: #1a1a1a;
             min-height: 100vh;
-            padding: 20px;
+            color: #fff;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: white;
-            border-radius: 10px;
-            padding: 20px 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        .navbar {
+            background: #2b2b2b;
+            border-bottom: 1px solid #333;
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .user-info {
+        .navbar-brand {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #dc2626;
             display: flex;
             align-items: center;
-            gap: 15px;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-        }
-
-        .user-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
+            gap: 0.5rem;
         }
 
         .dev-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #dc2626;
             color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
         }
 
-        .nav-buttons {
+        .navbar-user {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 1rem;
         }
 
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #dc2626;
         }
 
-        .btn-primary {
-            background: #667eea;
+        .user-name {
+            color: #ccc;
+        }
+
+        .back-btn, .logout-btn {
+            background: #444;
             color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
         }
 
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
+        .logout-btn {
+            background: #dc2626;
         }
 
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #333;
+        .back-btn:hover {
+            background: #555;
         }
 
-        .btn-secondary:hover {
-            background: #cbd5e0;
+        .logout-btn:hover {
+            background: #b91c1c;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #dc2626;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 0.95rem;
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
 
         .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: #666;
-        }
-
-        .search-box {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 12px 20px;
-            border: 2px solid #e2e8f0;
+            background: #2b2b2b;
+            padding: 1.5rem;
             border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            border-left: 3px solid #2563eb;
         }
 
-        .search-input:focus {
+        .stat-card.danger {
+            border-left-color: #dc2626;
+        }
+
+        .stat-card.success {
+            border-left-color: #16a34a;
+        }
+
+        .stat-card.warning {
+            border-left-color: #eab308;
+        }
+
+        .stat-card h3 {
+            color: #888;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .search-bar {
+            background: #2b2b2b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 0.75rem;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .search-bar input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #dc2626;
         }
 
         .guilds-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 1rem;
         }
 
         .guild-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: #2b2b2b;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid #333;
+            transition: all 0.2s;
             cursor: pointer;
-            transition: all 0.3s;
         }
 
         .guild-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            border-color: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .guild-card.expanded {
+            border-color: #dc2626;
         }
 
         .guild-header {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
+            gap: 1rem;
         }
 
         .guild-icon {
-            width: 60px;
-            height: 60px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #888;
+        }
+
+        .guild-icon img {
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
             object-fit: cover;
         }
 
-        .guild-icon-placeholder {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            font-weight: 700;
+        .guild-info {
+            flex: 1;
         }
 
-        .guild-info h3 {
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 5px;
+        .guild-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
         }
 
         .guild-id {
-            font-size: 12px;
-            color: #999;
+            font-size: 0.85rem;
+            color: #888;
             font-family: 'Courier New', monospace;
         }
 
         .guild-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
         }
 
         .guild-stat {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: #666;
+            flex-direction: column;
         }
 
-        .guild-stat-icon {
-            font-size: 16px;
+        .guild-stat-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
         }
 
-        .guild-owner {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: #f7fafc;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-
-        .owner-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-        }
-
-        .owner-name {
-            font-size: 13px;
-            color: #666;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            overflow-y: auto;
-            padding: 20px;
-        }
-
-        .modal-content {
-            background: white;
-            max-width: 1200px;
-            margin: 0 auto;
-            border-radius: 10px;
-            padding: 30px;
-            position: relative;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 30px;
-            cursor: pointer;
-            color: #999;
-            transition: color 0.3s;
-        }
-
-        .modal-close:hover {
-            color: #333;
-        }
-
-        .modal-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .modal-title {
-            font-size: 24px;
-            color: #333;
-        }
-
-        .config-section {
-            margin-bottom: 30px;
-        }
-
-        .config-title {
-            font-size: 18px;
+        .guild-stat-value {
+            font-size: 1.1rem;
             font-weight: 600;
-            color: #667eea;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e2e8f0;
+            color: #fff;
+            margin-top: 0.25rem;
         }
 
-        .config-data {
-            background: #f7fafc;
-            border-radius: 8px;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            overflow-x: auto;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .config-data pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .tabs {
+        .guild-actions {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e2e8f0;
+            gap: 0.5rem;
+            margin-top: 1rem;
         }
 
-        .tab {
-            padding: 12px 24px;
-            cursor: pointer;
+        .guild-actions button {
+            padding: 0.5rem 1rem;
+            background: #444;
+            color: white;
             border: none;
-            background: none;
-            font-size: 15px;
-            font-weight: 600;
-            color: #666;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
         }
 
-        .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+        .guild-actions button:hover {
+            background: #555;
         }
 
-        .tab:hover {
-            color: #667eea;
+        .guild-actions button.primary {
+            background: #2563eb;
         }
 
-        .tab-content {
+        .guild-actions button.primary:hover {
+            background: #1d4ed8;
+        }
+
+        .guild-details {
             display: none;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #333;
         }
 
-        .tab-content.active {
+        .guild-details.show {
             display: block;
         }
 
-        .channel-list, .role-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 10px;
+        .details-section {
+            margin-bottom: 1.5rem;
         }
 
-        .channel-item, .role-item {
-            background: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            border-left: 3px solid #667eea;
-            font-size: 14px;
+        .details-section h4 {
+            color: #dc2626;
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .details-content {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 3px solid #444;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #2b2b2b;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            color: #fff;
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .config-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .config-item {
+            background: #2b2b2b;
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+
+        .config-item.enabled {
+            border-left: 3px solid #16a34a;
         }
 
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #666;
-            font-size: 18px;
+            padding: 3rem;
+            color: #888;
         }
 
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(3, end) infinite;
+        .loading-spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #dc2626;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
         }
 
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .no-results {
+        .empty-state {
             text-align: center;
-            padding: 40px;
-            color: #999;
-            font-size: 16px;
+            padding: 3rem;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            .guild-stats {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .guild-actions {
+                flex-direction: column;
+            }
+
+            .config-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .json-viewer {
+            background: #0d0d0d;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .json-viewer pre {
+            margin: 0;
+            color: #ccc;
+        }
+
+        .member-list {
+            display: grid;
+            gap: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: #2b2b2b;
+            padding: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .member-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .member-info {
+            flex: 1;
+        }
+
+        .member-name {
+            font-size: 0.9rem;
+            color: #fff;
+        }
+
+        .member-id {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .member-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #888;
+        }
+
+        .member-status.online {
+            background: #16a34a;
+        }
+
+        .member-status.idle {
+            background: #eab308;
+        }
+
+        .member-status.dnd {
+            background: #dc2626;
         }
     </style>
 </head>
 <body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <span>🛠️ 開發者面板</span>
+            <span class="dev-badge">DEVELOPER</span>
+        </div>
+        <div class="navbar-user">
+            <a href="/select-server" class="back-btn">← 返回控制台</a>
+            <img src="{AVATAR_URL}" alt="Avatar" class="user-avatar">
+            <span class="user-name">{USERNAME}</span>
+            <a href="/logout" class="logout-btn">登出</a>
+        </div>
+    </nav>
+
     <div class="container">
         <div class="header">
-            <div class="user-info">
-                <img src="{AVATAR_URL}" alt="Avatar" class="user-avatar">
-                <div>
-                    <div class="user-name">{USERNAME}</div>
-                    <div class="dev-badge">🔧 開發者</div>
-                </div>
+            <h1>🔧 開發者控制面板</h1>
+            <p>管理所有機器人伺服器的配置和數據</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <h3>總伺服器數</h3>
+                <div class="value" id="totalGuilds">-</div>
             </div>
-            <div class="nav-buttons">
-                <a href="/select-server" class="btn btn-secondary">返回控制台</a>
-                <a href="/logout" class="btn btn-secondary">登出</a>
+            <div class="stat-card success">
+                <h3>總成員數</h3>
+                <div class="value" id="totalMembers">-</div>
+            </div>
+            <div class="stat-card warning">
+                <h3>在線成員</h3>
+                <div class="value" id="onlineMembers">-</div>
+            </div>
+            <div class="stat-card danger">
+                <h3>總頻道數</h3>
+                <div class="value" id="totalChannels">-</div>
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value" id="total-guilds">-</div>
-                <div class="stat-label">總伺服器數</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="total-members">-</div>
-                <div class="stat-label">總成員數</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="total-channels">-</div>
-                <div class="stat-label">總頻道數</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="total-roles">-</div>
-                <div class="stat-label">總身分組數</div>
-            </div>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 搜尋伺服器名稱或 ID...">
         </div>
 
-        <div class="search-box">
-            <input type="text" class="search-input" id="search" placeholder="🔍 搜尋伺服器名稱或 ID...">
-        </div>
-
-        <div id="guilds-container" class="guilds-grid">
-            <div class="loading">載入伺服器列表中</div>
-        </div>
-    </div>
-
-    <!-- 配置詳情模態框 -->
-    <div id="config-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeModal()">&times;</span>
-            <div class="modal-header">
-                <img id="modal-guild-icon" src="" alt="Icon" class="guild-icon" style="display: none;">
-                <div id="modal-guild-icon-placeholder" class="guild-icon-placeholder" style="display: none;"></div>
-                <div>
-                    <h2 class="modal-title" id="modal-guild-name">載入中...</h2>
-                    <div class="guild-id" id="modal-guild-id"></div>
-                </div>
-            </div>
-
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('overview')">總覽</button>
-                <button class="tab" onclick="switchTab('channels')">頻道</button>
-                <button class="tab" onclick="switchTab('roles')">身分組</button>
-                <button class="tab" onclick="switchTab('config')">配置文件</button>
-            </div>
-
-            <div id="tab-overview" class="tab-content active">
-                <div id="overview-content" class="loading">載入中</div>
-            </div>
-
-            <div id="tab-channels" class="tab-content">
-                <div id="channels-content" class="loading">載入中</div>
-            </div>
-
-            <div id="tab-roles" class="tab-content">
-                <div id="roles-content" class="loading">載入中</div>
-            </div>
-
-            <div id="tab-config" class="tab-content">
-                <div id="config-content" class="loading">載入中</div>
+        <div id="guildsContainer">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>載入伺服器資料中...</p>
             </div>
         </div>
     </div>
 
     <script>
         let allGuilds = [];
-        let currentGuildData = null;
 
-        // 載入所有伺服器
         async function loadGuilds() {
             try {
                 const response = await fetch('/api/dev/all-guilds');
                 const data = await response.json();
 
                 if (data.error) {
-                    document.getElementById('guilds-container').innerHTML = `
-                        <div class="no-results" style="grid-column: 1 / -1;">
-                            ❌ 載入失敗: ${data.error}
-                        </div>
-                    `;
-                    return;
+                    throw new Error(data.error);
                 }
 
                 allGuilds = data.guilds;
-                updateStats(data.guilds);
-                displayGuilds(data.guilds);
+                updateStats();
+                displayGuilds(allGuilds);
             } catch (error) {
                 console.error('載入失敗:', error);
-                document.getElementById('guilds-container').innerHTML = `
-                    <div class="no-results" style="grid-column: 1 / -1;">
-                        ❌ 載入失敗，請重新整理頁面
+                document.getElementById('guildsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <p>載入失敗: ${error.message}</p>
                     </div>
                 `;
             }
         }
 
-        // 更新統計數據
-        function updateStats(guilds) {
-            const totalMembers = guilds.reduce((sum, g) => sum + g.member_count, 0);
-            const totalChannels = guilds.reduce((sum, g) => sum + g.text_channels + g.voice_channels, 0);
-            const totalRoles = guilds.reduce((sum, g) => sum + g.roles, 0);
+        function updateStats() {
+            const totalMembers = allGuilds.reduce((sum, g) => sum + g.member_count, 0);
+            const onlineMembers = allGuilds.reduce((sum, g) => sum + g.online_count, 0);
+            const totalChannels = allGuilds.reduce((sum, g) => sum + g.text_channels + g.voice_channels, 0);
 
-            document.getElementById('total-guilds').textContent = guilds.length.toLocaleString();
-            document.getElementById('total-members').textContent = totalMembers.toLocaleString();
-            document.getElementById('total-channels').textContent = totalChannels.toLocaleString();
-            document.getElementById('total-roles').textContent = totalRoles.toLocaleString();
+            document.getElementById('totalGuilds').textContent = allGuilds.length;
+            document.getElementById('totalMembers').textContent = totalMembers.toLocaleString();
+            document.getElementById('onlineMembers').textContent = onlineMembers.toLocaleString();
+            document.getElementById('totalChannels').textContent = totalChannels.toLocaleString();
         }
 
-        // 顯示伺服器列表
         function displayGuilds(guilds) {
-            const container = document.getElementById('guilds-container');
+            const container = document.getElementById('guildsContainer');
 
             if (guilds.length === 0) {
-                container.innerHTML = '<div class="no-results" style="grid-column: 1 / -1;">沒有找到伺服器</div>';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>找不到符合的伺服器</p>
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = guilds.map(guild => `
-                <div class="guild-card" onclick="loadGuildConfig('${guild.id}')">
+            container.innerHTML = `
+                <div class="guilds-grid">
+                    ${guilds.map(guild => createGuildCard(guild)).join('')}
+                </div>
+            `;
+        }
+
+        function createGuildCard(guild) {
+            const iconHtml = guild.icon 
+                ? `<img src="${guild.icon}" alt="${guild.name}">` 
+                : guild.name.charAt(0).toUpperCase();
+
+            const createdDate = new Date(guild.created_at).toLocaleDateString('zh-TW');
+
+            return `
+                <div class="guild-card" data-guild-id="${guild.id}">
                     <div class="guild-header">
-                        ${guild.icon ? 
-                            `<img src="${guild.icon}" alt="${guild.name}" class="guild-icon">` :
-                            `<div class="guild-icon-placeholder">${guild.name.charAt(0).toUpperCase()}</div>`
-                        }
+                        <div class="guild-icon">${iconHtml}</div>
                         <div class="guild-info">
-                            <h3>${escapeHtml(guild.name)}</h3>
-                            <div class="guild-id">${guild.id}</div>
+                            <div class="guild-name">${guild.name}</div>
+                            <div class="guild-id">ID: ${guild.id}</div>
                         </div>
                     </div>
                     <div class="guild-stats">
                         <div class="guild-stat">
-                            <span class="guild-stat-icon">👥</span>
-                            <span>${guild.member_count.toLocaleString()} 成員</span>
+                            <span class="guild-stat-label">成員</span>
+                            <span class="guild-stat-value">${guild.member_count}</span>
                         </div>
                         <div class="guild-stat">
-                            <span class="guild-stat-icon">💬</span>
-                            <span>${guild.text_channels} 文字頻道</span>
+                            <span class="guild-stat-label">在線</span>
+                            <span class="guild-stat-value">${guild.online_count}</span>
                         </div>
                         <div class="guild-stat">
-                            <span class="guild-stat-icon">🔊</span>
-                            <span>${guild.voice_channels} 語音頻道</span>
+                            <span class="guild-stat-label">文字頻道</span>
+                            <span class="guild-stat-value">${guild.text_channels}</span>
                         </div>
                         <div class="guild-stat">
-                            <span class="guild-stat-icon">🎭</span>
-                            <span>${guild.roles} 身分組</span>
+                            <span class="guild-stat-label">語音頻道</span>
+                            <span class="guild-stat-value">${guild.voice_channels}</span>
+                        </div>
+                        <div class="guild-stat">
+                            <span class="guild-stat-label">身分組</span>
+                            <span class="guild-stat-value">${guild.roles}</span>
                         </div>
                     </div>
-                    ${guild.owner ? `
-                        <div class="guild-owner">
-                            ${guild.owner.avatar ? 
-                                `<img src="${guild.owner.avatar}" alt="${guild.owner.name}" class="owner-avatar">` :
-                                '<div class="owner-avatar" style="background: #ccc;"></div>'
-                            }
-                            <div class="owner-name">擁有者: ${escapeHtml(guild.owner.name)}</div>
+                    <div class="guild-actions">
+                        <button class="primary" onclick="toggleDetails('${guild.id}')">查看詳細配置</button>
+                        <button onclick="loadMembers('${guild.id}')">查看成員</button>
+                        <button onclick="window.open('/dashboard/${guild.id}', '_blank')">打開控制台</button>
+                    </div>
+                    <div class="guild-details" id="details-${guild.id}">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>載入配置中...</p>
                         </div>
-                    ` : ''}
+                    </div>
                 </div>
-            `).join('');
+            `;
         }
 
-        // 搜尋功能
-        document.getElementById('search').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filtered = allGuilds.filter(guild => 
-                guild.name.toLowerCase().includes(searchTerm) || 
-                guild.id.includes(searchTerm)
-            );
-            displayGuilds(filtered);
-        });
+        async function toggleDetails(guildId) {
+            const detailsDiv = document.getElementById(`details-${guildId}`);
+            const card = document.querySelector(`[data-guild-id="${guildId}"]`);
 
-        // 載入伺服器配置
-        async function loadGuildConfig(guildId) {
-            const modal = document.getElementById('config-modal');
-            modal.style.display = 'block';
+            if (detailsDiv.classList.contains('show')) {
+                detailsDiv.classList.remove('show');
+                card.classList.remove('expanded');
+                return;
+            }
 
-            // 重置內容
-            document.getElementById('overview-content').innerHTML = '<div class="loading">載入中</div>';
-            document.getElementById('channels-content').innerHTML = '<div class="loading">載入中</div>';
-            document.getElementById('roles-content').innerHTML = '<div class="loading">載入中</div>';
-            document.getElementById('config-content').innerHTML = '<div class="loading">載入中</div>';
+            card.classList.add('expanded');
+            detailsDiv.classList.add('show');
 
             try {
                 const response = await fetch(`/api/dev/guild-config/${guildId}`);
                 const data = await response.json();
 
                 if (data.error) {
-                    closeModal();
-                    alert('載入失敗: ' + data.error);
-                    return;
+                    throw new Error(data.error);
                 }
 
-                currentGuildData = data;
-                displayGuildDetails(data);
+                displayGuildDetails(guildId, data);
             } catch (error) {
-                console.error('載入配置失敗:', error);
-                closeModal();
-                alert('載入失敗，請重試');
+                detailsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p>載入失敗: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
-        // 顯示伺服器詳情
-        function displayGuildDetails(data) {
-            const guild = data.guild;
+        function displayGuildDetails(guildId, data) {
+            const detailsDiv = document.getElementById(`details-${guildId}`);
+            const guild = data.guild_info;
+            const configs = data.configs;
 
-            // 設定標題
-            document.getElementById('modal-guild-name').textContent = guild.name;
-            document.getElementById('modal-guild-id').textContent = guild.id;
+            const configKeys = Object.keys(configs);
+            const configItems = configKeys.map(key => {
+                const hasData = configs[key] && Object.keys(configs[key]).length > 0;
+                return `<div class="config-item ${hasData ? 'enabled' : ''}">${key}</div>`;
+            }).join('');
 
-            // 設定圖標
-            if (guild.icon) {
-                document.getElementById('modal-guild-icon').src = guild.icon;
-                document.getElementById('modal-guild-icon').style.display = 'block';
-                document.getElementById('modal-guild-icon-placeholder').style.display = 'none';
-            } else {
-                document.getElementById('modal-guild-icon-placeholder').textContent = guild.name.charAt(0).toUpperCase();
-                document.getElementById('modal-guild-icon').style.display = 'none';
-                document.getElementById('modal-guild-icon-placeholder').style.display = 'flex';
-            }
-
-            // 總覽標籤
-            document.getElementById('overview-content').innerHTML = `
-                <div class="config-section">
-                    <div class="config-title">基本資訊</div>
-                    <div class="config-data">
-                        <pre>${JSON.stringify({
-                            id: guild.id,
-                            name: guild.name,
-                            owner_id: guild.owner_id,
-                            member_count: guild.member_count,
-                            created_at: guild.created_at,
-                            verification_level: guild.verification_level,
-                            premium_tier: guild.premium_tier,
-                            features: guild.features
-                        }, null, 2)}</pre>
-                    </div>
-                </div>
-                <div class="config-section">
-                    <div class="config-title">表情符號 (${guild.emojis.length})</div>
-                    <div class="config-data">
-                        <pre>${JSON.stringify(guild.emojis, null, 2)}</pre>
-                    </div>
-                </div>
-            `;
-
-            // 頻道標籤
-            document.getElementById('channels-content').innerHTML = `
-                <div class="config-section">
-                    <div class="config-title">文字頻道 (${guild.channels.text.length})</div>
-                    <div class="channel-list">
-                        ${guild.channels.text.map(c => `
-                            <div class="channel-item">
-                                <strong>#${escapeHtml(c.name)}</strong><br>
-                                <small>ID: ${c.id}</small><br>
-                                ${c.category ? `<small>分類: ${escapeHtml(c.category)}</small>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                <div class="config-section">
-                    <div class="config-title">語音頻道 (${guild.channels.voice.length})</div>
-                    <div class="channel-list">
-                        ${guild.channels.voice.map(c => `
-                            <div class="channel-item">
-                                <strong>🔊 ${escapeHtml(c.name)}</strong><br>
-                                <small>ID: ${c.id}</small><br>
-                                ${c.category ? `<small>分類: ${escapeHtml(c.category)}</small>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                <div class="config-section">
-                    <div class="config-title">分類 (${guild.channels.categories.length})</div>
-                    <div class="channel-list">
-                        ${guild.channels.categories.map(c => `
-                            <div class="channel-item">
-                                <strong>📁 ${escapeHtml(c.name)}</strong><br>
-                                <small>ID: ${c.id}</small>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-
-            // 身分組標籤
-            document.getElementById('roles-content').innerHTML = `
-                <div class="config-section">
-                    <div class="config-title">身分組列表 (${guild.roles.length})</div>
-                    <div class="role-list">
-                        ${guild.roles.map(r => `
-                            <div class="role-item" style="border-left-color: ${r.color};">
-                                <strong>${escapeHtml(r.name)}</strong><br>
-                                <small>ID: ${r.id}</small><br>
-                                <small>成員: ${r.members} | 位置: ${r.position}</small>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-
-            // 配置文件標籤
-            const configKeys = Object.keys(data.config);
-            if (configKeys.length === 0) {
-                document.getElementById('config-content').innerHTML = '<div class="no-results">此伺服器沒有任何配置文件</div>';
-            } else {
-                document.getElementById('config-content').innerHTML = configKeys.map(key => `
-                    <div class="config-section">
-                        <div class="config-title">${key}.json</div>
-                        <div class="config-data">
-                            <pre>${JSON.stringify(data.config[key], null, 2)}</pre>
+            detailsDiv.innerHTML = `
+                <div class="details-section">
+                    <h4>📊 伺服器資訊</h4>
+                    <div class="details-content">
+                        <div class="detail-row">
+                            <span class="detail-label">擁有者</span>
+                            <span class="detail-value">${guild.owner} (${guild.owner_id})</span>
                         </div>
+                        <div class="detail-row">
+                            <span class="detail-label">創建時間</span>
+                            <span class="detail-value">${new Date(guild.created_at).toLocaleString('zh-TW')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Nitro 等級</span>
+                            <span class="detail-value">Tier ${guild.premium_tier} (${guild.premium_subscription_count} Boosts)</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">驗證等級</span>
+                            <span class="detail-value">${guild.verification_level}</span>
+                        </div>
+                        ${guild.description ? `
+                        <div class="detail-row">
+                            <span class="detail-label">描述</span>
+                            <span class="detail-value">${guild.description}</span>
+                        </div>
+                        ` : ''}
                     </div>
-                `).join('');
+                </div>
+
+                <div class="details-section">
+                    <h4>⚙️ 已配置的模組 (${configKeys.length})</h4>
+                    <div class="config-list">
+                        ${configItems || '<div class="config-item">無配置文件</div>'}
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h4>📝 配置文件內容</h4>
+                    <div class="json-viewer">
+                        <pre>${JSON.stringify(configs, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadMembers(guildId) {
+            const detailsDiv = document.getElementById(`details-${guildId}`);
+            const card = document.querySelector(`[data-guild-id="${guildId}"]`);
+
+            card.classList.add('expanded');
+            detailsDiv.classList.add('show');
+            detailsDiv.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>載入成員列表中...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/dev/guild-members/${guildId}?limit=50`);
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                displayMembers(guildId, data);
+            } catch (error) {
+                detailsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p>載入失敗: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
-        // 切換標籤
-        function switchTab(tabName) {
-            // 移除所有 active
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        function displayMembers(guildId, data) {
+            const detailsDiv = document.getElementById(`details-${guildId}`);
 
-            // 添加 active
-            event.target.classList.add('active');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+            const memberItems = data.members.map(member => {
+                const statusClass = member.status.toLowerCase();
+                const rolesText = member.roles.length > 0 ? member.roles.join(', ') : '無身分組';
+
+                return `
+                    <div class="member-item">
+                        <img src="${member.avatar}" alt="${member.name}" class="member-avatar">
+                        <div class="member-info">
+                            <div class="member-name">${member.display_name}${member.bot ? ' 🤖' : ''}</div>
+                            <div class="member-id">${member.id} • ${rolesText}</div>
+                        </div>
+                        <div class="member-status ${statusClass}"></div>
+                    </div>
+                `;
+            }).join('');
+
+            detailsDiv.innerHTML = `
+                <div class="details-section">
+                    <h4>👥 成員列表 (顯示 ${data.shown} / ${data.total})</h4>
+                    <div class="member-list">
+                        ${memberItems}
+                    </div>
+                </div>
+            `;
         }
 
-        // 關閉模態框
-        function closeModal() {
-            document.getElementById('config-modal').style.display = 'none';
-            currentGuildData = null;
-        }
+        // 搜尋功能
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = allGuilds.filter(guild => 
+                guild.name.toLowerCase().includes(query) || 
+                guild.id.includes(query)
+            );
+            displayGuilds(filtered);
+        });
 
-        // 點擊模態框外部關閉
-        window.onclick = function(event) {
-            const modal = document.getElementById('config-modal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        }
-
-        // HTML 轉義函數
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // 頁面載入時執行
-        document.addEventListener('DOMContentLoaded', loadGuilds);
+        // 頁面載入時獲取資料
+        loadGuilds();
     </script>
 </body>
 </html>
