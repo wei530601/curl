@@ -1786,7 +1786,9 @@ class WebServer:
         
         # 驗證是否為開發者
         if not self.is_developer(user['id']):
-            return web.Response(text="您沒有權限訪問開發者面板", status=403)
+            with open('web/404.html', 'r', encoding='utf-8') as f:
+                html = f.read()
+            return web.Response(text=html, content_type='text/html', status=404)
         
         with open('web/dev-panel.html', 'r', encoding='utf-8') as f:
             html = f.read()
