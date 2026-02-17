@@ -1787,143 +1787,172 @@ class WebServer:
     
     async def api_dev_all_guilds(self, request):
         """API：獲取所有伺服器列表（開發者專用）"""
-        session = await get_session(request)
-        user = session.get('user')
-        
-        if not user:
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
-        # 驗證是否為開發者
-        if not self.is_developer(user['id']):
-            return web.json_response({'error': 'Forbidden'}, status=403)
-        
-        # 獲取所有伺服器資訊
-        guilds_data = []
-        for guild in self.bot.guilds:
-            # 獲取伺服器圖標
-            icon_url = str(guild.icon.url) if guild.icon else None
+        try:
+            session = await get_session(request)
+            user = session.get('user')
             
-            # 計算在線成員數
-            online_count = sum(1 for m in guild.members if m.status != discord.Status.offline)
+            if not user:
+                return web.json_response({'error': 'Unauthorized'}, status=401)
             
-            guilds_data.append({
-                'id': str(guild.id),
-                'name': guild.name,
-                'icon': icon_url,
-                'member_count': guild.member_count,
-                'online_count': online_count,
-                'owner_id': str(guild.owner_id),
-                'created_at': guild.created_at.isoformat(),
-                'text_channels': len(guild.text_channels),
-                'voice_channels': len(guild.voice_channels),
-                'roles': len(guild.roles),
-                'emojis': len(guild.emojis)
-            })
-        
-        return web.json_response({'guilds': guilds_data, 'total': len(guilds_data)})
+            # 驗證是否為開發者
+            if not self.is_developer(user['id']):
+                return web.json_response({'error': 'Forbidden'}, status=403)
+            
+            # 獲取所有伺服器資訊
+            guilds_data = []
+            for guild in self.bot.guilds:
+                try:
+                    # 獲取伺服器圖標
+                    icon_url = str(guild.icon.url) if guild.icon else None
+                    
+                    # 計算在線成員數
+                    online_count = sum(1 for m in guild.members if m.status != discord.Status.offline)
+                    
+                    guilds_data.append({
+                        'id': str(guild.id),
+                        'name': guild.name,
+                        'icon': icon_url,
+                        'member_count': guild.member_count,
+                        'online_count': online_count,
+                        'owner_id': str(guild.owner_id),
+                        'created_at': guild.created_at.isoformat(),
+                        'text_channels': len(guild.text_channels),
+                        'voice_channels': len(guild.voice_channels),
+                        'roles': len(guild.roles),
+                        'emojis': len(guild.emojis)
+                    })
+                except Exception as e:
+                    print(f"處理伺服器 {guild.id} 時出錯: {e}")
+                    # 繼續處理其他伺服器
+                    continue
+            
+            return web.json_response({'guilds': guilds_data, 'total': len(guilds_data)})
+        except Exception as e:
+            print(f"api_dev_all_guilds 錯誤: {e}")
+            import traceback
+            traceback.print_exc()
+            return web.json_response({'error': str(e)}, status=500)
     
     async def api_dev_guild_config(self, request):
         """API：獲取伺服器所有配置（開發者專用）"""
-        session = await get_session(request)
-        user = session.get('user')
-        
-        if not user:
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
-        # 驗證是否為開發者
-        if not self.is_developer(user['id']):
-            return web.json_response({'error': 'Forbidden'}, status=403)
-        
-        guild_id = request.match_info.get('guild_id')
-        guild = self.bot.get_guild(int(guild_id))
-        
-        if not guild:
-            return web.json_response({'error': 'Guild not found'}, status=404)
-        
-        # 讀取所有配置文件
-        data_dir = os.path.join('data', guild_id)
-        configs = {}
-        
-        if os.path.exists(data_dir):
-            for filename in os.listdir(data_dir):
-                if filename.endswith('.json'):
-                    filepath = os.path.join(data_dir, filename)
-                    try:
-                        with open(filepath, 'r', encoding='utf-8') as f:
-                            config_name = filename[:-5]  # 移除 .json
-                            configs[config_name] = json.load(f)
-                    except Exception as e:
-                        configs[filename] = {'error': str(e)}
-        
-        # 獲取伺服器基本資訊
-        guild_info = {
-            'id': str(guild.id),
-            'name': guild.name,
-            'icon': str(guild.icon.url) if guild.icon else None,
-            'owner': str(guild.owner) if guild.owner else 'Unknown',
-            'owner_id': str(guild.owner_id),
-            'member_count': guild.member_count,
-            'created_at': guild.created_at.isoformat(),
-            'premium_tier': guild.premium_tier,
-            'premium_subscription_count': guild.premium_subscription_count,
-            'description': guild.description,
-            'features': guild.features,
-            'verification_level': str(guild.verification_level),
-            'channels': {
-                'text': len(guild.text_channels),
-                'voice': len(guild.voice_channels),
-                'categories': len(guild.categories),
-                'total': len(guild.channels)
-            },
-            'roles': len(guild.roles),
-            'emojis': len(guild.emojis)
-        }
-        
-        return web.json_response({
-            'guild_info': guild_info,
-            'configs': configs
-        })
+        try:
+            session = await get_session(request)
+            user = session.get('user')
+            
+            if not user:
+                return web.json_response({'error': 'Unauthorized'}, status=401)
+            
+            # 驗證是否為開發者
+            if not self.is_developer(user['id']):
+                return web.json_response({'error': 'Forbidden'}, status=403)
+            
+            guild_id = request.match_info.get('guild_id')
+            guild = self.bot.get_guild(int(guild_id))
+            
+            if not guild:
+                return web.json_response({'error': 'Guild not found'}, status=404)
+            
+            # 讀取所有配置文件
+            data_dir = os.path.join('data', guild_id)
+            configs = {}
+            
+            if os.path.exists(data_dir):
+                for filename in os.listdir(data_dir):
+                    if filename.endswith('.json'):
+                        filepath = os.path.join(data_dir, filename)
+                        try:
+                            with open(filepath, 'r', encoding='utf-8') as f:
+                                config_name = filename[:-5]  # 移除 .json
+                                configs[config_name] = json.load(f)
+                        except Exception as e:
+                            print(f"讀取配置文件 {filename} 失敗: {e}")
+                            configs[filename] = {'error': str(e)}
+            
+            # 獲取伺服器基本資訊
+            guild_info = {
+                'id': str(guild.id),
+                'name': guild.name,
+                'icon': str(guild.icon.url) if guild.icon else None,
+                'owner': str(guild.owner) if guild.owner else 'Unknown',
+                'owner_id': str(guild.owner_id),
+                'member_count': guild.member_count,
+                'created_at': guild.created_at.isoformat(),
+                'premium_tier': guild.premium_tier,
+                'premium_subscription_count': guild.premium_subscription_count or 0,
+                'description': guild.description,
+                'features': list(guild.features),
+                'verification_level': str(guild.verification_level),
+                'channels': {
+                    'text': len(guild.text_channels),
+                    'voice': len(guild.voice_channels),
+                    'categories': len(guild.categories),
+                    'total': len(guild.channels)
+                },
+                'roles': len(guild.roles),
+                'emojis': len(guild.emojis)
+            }
+            
+            return web.json_response({
+                'guild_info': guild_info,
+                'configs': configs
+            })
+        except Exception as e:
+            print(f"api_dev_guild_config 錯誤: {e}")
+            import traceback
+            traceback.print_exc()
+            return web.json_response({'error': str(e)}, status=500)
     
     async def api_dev_guild_members(self, request):
         """API：獲取伺服器成員列表（開發者專用）"""
-        session = await get_session(request)
-        user = session.get('user')
-        
-        if not user:
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
-        # 驗證是否為開發者
-        if not self.is_developer(user['id']):
-            return web.json_response({'error': 'Forbidden'}, status=403)
-        
-        guild_id = request.match_info.get('guild_id')
-        guild = self.bot.get_guild(int(guild_id))
-        
-        if not guild:
-            return web.json_response({'error': 'Guild not found'}, status=404)
-        
-        # 獲取成員列表（限制前100個，避免過大）
-        limit = int(request.query.get('limit', 100))
-        members_data = []
-        
-        for member in list(guild.members)[:limit]:
-            members_data.append({
-                'id': str(member.id),
-                'name': member.name,
-                'display_name': member.display_name,
-                'avatar': str(member.display_avatar.url),
-                'bot': member.bot,
-                'status': str(member.status),
-                'joined_at': member.joined_at.isoformat() if member.joined_at else None,
-                'roles': [role.name for role in member.roles if role.name != '@everyone'],
-                'top_role': member.top_role.name if member.top_role else None
+        try:
+            session = await get_session(request)
+            user = session.get('user')
+            
+            if not user:
+                return web.json_response({'error': 'Unauthorized'}, status=401)
+            
+            # 驗證是否為開發者
+            if not self.is_developer(user['id']):
+                return web.json_response({'error': 'Forbidden'}, status=403)
+            
+            guild_id = request.match_info.get('guild_id')
+            guild = self.bot.get_guild(int(guild_id))
+            
+            if not guild:
+                return web.json_response({'error': 'Guild not found'}, status=404)
+            
+            # 獲取成員列表（限制前100個，避免過大）
+            limit = int(request.query.get('limit', 100))
+            members_data = []
+            
+            for member in list(guild.members)[:limit]:
+                try:
+                    members_data.append({
+                        'id': str(member.id),
+                        'name': member.name,
+                        'display_name': member.display_name,
+                        'avatar': str(member.display_avatar.url),
+                        'bot': member.bot,
+                        'status': str(member.status),
+                        'joined_at': member.joined_at.isoformat() if member.joined_at else None,
+                        'roles': [role.name for role in member.roles if role.name != '@everyone'],
+                        'top_role': member.top_role.name if member.top_role else None
+                    })
+                except Exception as e:
+                    print(f"處理成員 {member.id} 時出錯: {e}")
+                    # 繼續處理其他成員
+                    continue
+            
+            return web.json_response({
+                'members': members_data,
+                'total': guild.member_count,
+                'shown': len(members_data)
             })
-        
-        return web.json_response({
-            'members': members_data,
-            'total': guild.member_count,
-            'shown': len(members_data)
-        })
+        except Exception as e:
+            print(f"api_dev_guild_members 錯誤: {e}")
+            import traceback
+            traceback.print_exc()
+            return web.json_response({'error': str(e)}, status=500)
     
     async def start(self):
         """啟動 Web 伺服器"""

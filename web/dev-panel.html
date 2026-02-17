@@ -549,14 +549,31 @@
 
         async function loadGuilds() {
             try {
+                console.log('開始載入伺服器列表...');
                 const response = await fetch('/api/dev/all-guilds');
-                const data = await response.json();
+                console.log('響應狀態:', response.status);
+                console.log('響應類型:', response.headers.get('content-type'));
+                
+                // 先讀取文本，以便在解析失敗時查看
+                const text = await response.text();
+                console.log('響應文本:', text.substring(0, 200)); // 只顯示前200字符
+                
+                // 嘗試解析 JSON
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON 解析失敗:', parseError);
+                    console.error('完整響應文本:', text);
+                    throw new Error(`JSON 解析失敗: ${parseError.message}`);
+                }
 
                 if (data.error) {
                     throw new Error(data.error);
                 }
 
                 allGuilds = data.guilds;
+                console.log('成功載入', allGuilds.length, '個伺服器');
                 updateStats();
                 displayGuilds(allGuilds);
             } catch (error) {
@@ -565,6 +582,7 @@
                     <div class="empty-state">
                         <div class="empty-state-icon">⚠️</div>
                         <p>載入失敗: ${error.message}</p>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">請檢查瀏覽器控制台查看詳細錯誤</p>
                     </div>
                 `;
             }
@@ -682,9 +700,21 @@
                 console.log('發送請求到:', `/api/dev/guild-config/${guildId}`);
                 const response = await fetch(`/api/dev/guild-config/${guildId}`);
                 console.log('響應狀態:', response.status);
+                console.log('響應類型:', response.headers.get('content-type'));
                 
-                const data = await response.json();
-                console.log('收到數據:', data);
+                // 先讀取文本
+                const text = await response.text();
+                console.log('響應文本:', text.substring(0, 200));
+                
+                // 嘗試解析 JSON
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON 解析失敗:', parseError);
+                    console.error('完整響應文本:', text);
+                    throw new Error(`JSON 解析失敗: ${parseError.message}`);
+                }
 
                 if (data.error) {
                     throw new Error(data.error);
@@ -786,9 +816,21 @@
                 console.log('發送請求到:', `/api/dev/guild-members/${guildId}?limit=50`);
                 const response = await fetch(`/api/dev/guild-members/${guildId}?limit=50`);
                 console.log('響應狀態:', response.status);
+                console.log('響應類型:', response.headers.get('content-type'));
                 
-                const data = await response.json();
-                console.log('收到數據:', data);
+                // 先讀取文本
+                const text = await response.text();
+                console.log('響應文本:', text.substring(0, 200));
+                
+                // 嘗試解析 JSON
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON 解析失敗:', parseError);
+                    console.error('完整響應文本:', text);
+                    throw new Error(`JSON 解析失敗: ${parseError.message}`);
+                }
 
                 if (data.error) {
                     throw new Error(data.error);
