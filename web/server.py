@@ -118,6 +118,11 @@ class WebServer:
         self.app.router.add_post('/api/security/{guild_id}/banned-words', self.api_add_banned_word)
         self.app.router.add_delete('/api/security/{guild_id}/banned-words', self.api_delete_banned_word)
         
+        # 定時消息 API
+        self.app.router.add_get('/api/scheduled-messages/{guild_id}', self.api_get_scheduled_messages)
+        self.app.router.add_post('/api/scheduled-messages/{guild_id}', self.api_add_scheduled_message)
+        self.app.router.add_delete('/api/scheduled-messages/{guild_id}/{message_id}', self.api_delete_scheduled_message)
+        
         # 開發者面板 API
         self.app.router.add_get('/dev-panel', self.dev_panel)
         self.app.router.add_get('/api/dev/all-guilds', self.api_dev_all_guilds)
@@ -1948,6 +1953,171 @@ class WebServer:
             import traceback
             traceback.print_exc()
             return web.json_response({'error': str(e)}, status=500)
+    
+    # ===== 定時消息 API =====
+    async def api_get_scheduled_messages(self, request):
+        """獲取定時消息列表"""
+        try:
+            session = await get_session(request)
+            if not session.get('user'):
+                return web.json_response({'error': 'Unauthorized'}, status=401)
+            
+            guild_id = request.match_info.get('guild_id')
+            
+            # 載入定時消息數據
+            import os
+            data_file = f'data/scheduled_messages/{guild_id}.json'
+            if os.path.exists(data_file):
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    messages = json.load(f)
+            else:
+                messages = []
+            
+            return web.json_response({'messages': messages})
+        except Exception as e:
+            print(f"api_get_scheduled_messages 錯誤: {e}")
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_add_scheduled_message(self, request):
+        """添加定時消息"""
+        try:
+            session = await get_session(request)
+            if not session.get('user'):
+                return web.json_response({'error': 'Unauthorized'}, status=401)
+            
+            guild_id = request.match_info.get('guild_id')
+            data = await request.json()
+            
+            # 驗證必要字段
+            required_fields = ['time', 'message', 'channel_id']
+            for field in required_fields:
+                if field not in data:
+                    return web.json_response({'error': f'缺少必要字段: {field}'}, status=400)
+            
+            # 載入現有數據
+            import os
+            import uuid
+            from datetime import datetime, timedelta
+            
+            data_dir = 'data/scheduled_messages'
+            os.makedirs(data_dir, exist_ok=True)
+            data_file = f'{data_dir}/{guild_id}.json'
+            
+            if os.path.exists(data_file):
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    messages = json.load(f)
+            else:
+                messages = []
+            
+            # 驗證時間格式和是否在未來
+            try:
+                time_format = "%Y/%m/%d %H:%M"
+                input_time = datetime.strptime(data['time'], time_format)
+                utc8_offset = timedelta(hours=8)
+                now_utc = datetime.utcnow()
+                now_utc8 = now_utc + utc8_offset
+                
+                if input_time <= now_utc8:
+                    return web.json_response({'error': '時間必須在未來'}, status=400)
+            except ValueError:
+                return web.json_response({'error': '時間格式錯誤，請使用 YYYY/MM/DD HH:MM'}, status=400)
+            
+            # 創建新消息
+            new_message = {
+                'id': str(uuid.uuid4()),
+                'time': data['time'],
+                'message': data['message'],
+                'channel_id': data['channel_id'],
+                'created_at': datetime.utcnow().isoformat(),
+                'created_by': session.get('user')['username']
+            }
+            
+            messages.append(new_message)
+            
+            # 保存數據
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(messages, f, ensure_ascii=False, indent=2)
+            
+            # 啟動定時任務
+            guild = self.bot.get_guild(int(guild_id))
+            if guild:
+                channel = guild.get_channel(int(data['channel_id']))
+                if channel:
+                    asyncio.create_task(self._schedule_message(guild_id, new_message['id'], input_time, data['message'], channel))
+            
+            return web.json_response({'success': True, 'message': new_message})
+        except Exception as e:
+            print(f"api_add_scheduled_message 錯誤: {e}")
+            import traceback
+            traceback.print_exc()
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def api_delete_scheduled_message(self, request):
+        """刪除定時消息"""
+        try:
+            session = await get_session(request)
+            if not session.get('user'):
+                return web.json_response({'error': 'Unauthorized'}, status=401)
+            
+            guild_id = request.match_info.get('guild_id')
+            message_id = request.match_info.get('message_id')
+            
+            # 載入數據
+            import os
+            data_file = f'data/scheduled_messages/{guild_id}.json'
+            
+            if not os.path.exists(data_file):
+                return web.json_response({'error': '找不到數據'}, status=404)
+            
+            with open(data_file, 'r', encoding='utf-8') as f:
+                messages = json.load(f)
+            
+            # 刪除指定消息
+            messages = [msg for msg in messages if msg['id'] != message_id]
+            
+            # 保存數據
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(messages, f, ensure_ascii=False, indent=2)
+            
+            return web.json_response({'success': True})
+        except Exception as e:
+            print(f"api_delete_scheduled_message 錯誤: {e}")
+            return web.json_response({'error': str(e)}, status=500)
+    
+    async def _schedule_message(self, guild_id, message_id, send_time, message_content, channel):
+        """執行定時消息發送"""
+        try:
+            from datetime import datetime, timedelta
+            
+            # 計算等待時間
+            utc8_offset = timedelta(hours=8)
+            now_utc = datetime.utcnow()
+            now_utc8 = now_utc + utc8_offset
+            time_diff = send_time - now_utc8
+            
+            if time_diff.total_seconds() > 0:
+                await asyncio.sleep(time_diff.total_seconds())
+                
+                # 發送消息
+                embed = discord.Embed(
+                    description=message_content,
+                    color=discord.Color.blue(),
+                    timestamp=datetime.utcnow()
+                )
+                embed.set_footer(text="定時消息")
+                await channel.send(embed=embed)
+                
+                # 發送後從數據中刪除
+                import os
+                data_file = f'data/scheduled_messages/{guild_id}.json'
+                if os.path.exists(data_file):
+                    with open(data_file, 'r', encoding='utf-8') as f:
+                        messages = json.load(f)
+                    messages = [msg for msg in messages if msg['id'] != message_id]
+                    with open(data_file, 'w', encoding='utf-8') as f:
+                        json.dump(messages, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"定時消息發送失敗: {e}")
     
     async def api_dev_guild_members(self, request):
         """API：獲取伺服器成員列表（開發者專用）"""

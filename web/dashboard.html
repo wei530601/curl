@@ -489,6 +489,9 @@
             <div class="sidebar-item" onclick="showSection('security')">
                 安全系統
             </div>
+            <div class="sidebar-item" onclick="showSection('scheduled-messages')">
+                定時消息
+            </div>
         </div>
 
         <div class="content">
@@ -692,6 +695,72 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 定時消息 -->
+            <div id="section-scheduled-messages" class="content-section" style="display: none;">
+                <div class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 class="section-title" style="margin: 0;">定時消息管理</h2>
+                        <button onclick="showAddScheduledMessageDialog()" 
+                                style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                            ➕ 新增定時消息
+                        </button>
+                    </div>
+
+                    <div style="background: #1e1e1e; padding: 1.5rem; border-radius: 4px;">
+                        <div id="scheduled-messages-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- 定時消息列表將在這裡動態生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加定時消息的模態框 -->
+    <div id="scheduledMessageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: #2b2b2b; border-radius: 4px; max-width: 600px; width: 90%; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; color: #fff;">新增定時消息</h3>
+                <button onclick="closeScheduledMessageDialog()" style="background: none; border: none; color: #888; font-size: 1.5rem; cursor: pointer;">✕</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- 時間輸入 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">發送時間 (UTC+8)</label>
+                    <input type="text" id="scheduleTime" placeholder="格式: YYYY/MM/DD HH:MM，例如: 2026/02/18 15:30" 
+                           style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                    <small style="color: #888;">時區為 UTC+8（台灣/香港/中國時間）</small>
+                </div>
+                
+                <!-- 頻道選擇 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">發送頻道</label>
+                    <select id="scheduleChannel" style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        <!-- 頻道列表將動態載入 -->
+                    </select>
+                </div>
+                
+                <!-- 消息內容 -->
+                <div>
+                    <label style="display: block; color: #ccc; margin-bottom: 0.5rem;">消息內容</label>
+                    <textarea id="scheduleMessage" rows="5" placeholder="輸入要發送的消息內容" 
+                              style="width: 100%; padding: 0.75rem; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; resize: vertical;"></textarea>
+                </div>
+                
+                <!-- 按鈕 -->
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button onclick="saveScheduledMessage()" 
+                            style="flex: 1; padding: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                        保存
+                    </button>
+                    <button onclick="closeScheduledMessageDialog()" 
+                            style="flex: 1; padding: 0.75rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        取消
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -861,6 +930,11 @@
             const targetSection = document.getElementById('section-' + sectionName);
             if (targetSection) {
                 targetSection.style.display = 'block';
+            }
+            
+            // 載入對應section的數據
+            if (sectionName === 'scheduled-messages') {
+                loadScheduledMessages();
             }
             
             // 添加active狀態到點擊的項目
@@ -2885,6 +2959,148 @@
             } catch (error) {
                 console.error('刪除違禁詞失敗:', error);
                 showNotification('操作失敗: ' + error.message, 'error');
+            }
+        }
+        
+        // ===== 定時消息管理 =====
+        
+        // 載入定時消息列表
+        async function loadScheduledMessages() {
+            try {
+                const response = await fetch(`/api/scheduled-messages/${GUILD_ID}`);
+                if (!response.ok) throw new Error('載入失敗');
+                
+                const data = await response.json();
+                const container = document.getElementById('scheduled-messages-list');
+                
+                if (!data.messages || data.messages.length === 0) {
+                    container.innerHTML = '<p style="color: #888; text-align: center; padding: 2rem;">暫無定時消息</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.messages.map(msg => `
+                    <div style="background: #2a2a2a; padding: 1rem; border-radius: 4px; border-left: 3px solid #2563eb;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #fff; margin-bottom: 0.5rem;">
+                                    ⏰ ${escapeHtml(msg.time)}
+                                </div>
+                                <div style="color: #888; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                    📢 頻道 ID: ${escapeHtml(msg.channel_id)}
+                                </div>
+                                <div style="color: #ccc; font-size: 0.9rem; background: #1a1a1a; padding: 0.75rem; border-radius: 4px; word-break: break-word;">
+                                    ${escapeHtml(msg.message)}
+                                </div>
+                            </div>
+                            <button onclick="deleteScheduledMessage('${msg.id}')" 
+                                    style="padding: 0.5rem 0.75rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 1rem;">
+                                刪除
+                            </button>
+                        </div>
+                        <div style="color: #666; font-size: 0.85rem;">
+                            由 ${escapeHtml(msg.created_by)} 建立於 ${new Date(msg.created_at).toLocaleString('zh-TW')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('載入定時消息失敗:', error);
+                document.getElementById('scheduled-messages-list').innerHTML = 
+                    '<p style="color: #dc2626; text-align: center; padding: 2rem;">載入失敗</p>';
+            }
+        }
+        
+        // 顯示添加定時消息對話框
+        async function showAddScheduledMessageDialog() {
+            // 載入頻道列表
+            try {
+                const response = await fetch(`/api/channels/${GUILD_ID}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const select = document.getElementById('scheduleChannel');
+                    select.innerHTML = data.channels
+                        .filter(ch => ch.type === 'text')
+                        .map(ch => `<option value="${ch.id}">${escapeHtml(ch.name)}</option>`)
+                        .join('');
+                }
+            } catch (error) {
+                console.error('載入頻道列表失敗:', error);
+            }
+            
+            // 清空表單
+            document.getElementById('scheduleTime').value = '';
+            document.getElementById('scheduleMessage').value = '';
+            
+            // 顯示對話框
+            document.getElementById('scheduledMessageModal').style.display = 'flex';
+        }
+        
+        // 關閉定時消息對話框
+        function closeScheduledMessageDialog() {
+            document.getElementById('scheduledMessageModal').style.display = 'none';
+        }
+        
+        // 保存定時消息
+        async function saveScheduledMessage() {
+            const time = document.getElementById('scheduleTime').value.trim();
+            const message = document.getElementById('scheduleMessage').value.trim();
+            const channelId = document.getElementById('scheduleChannel').value;
+            
+            if (!time || !message) {
+                showNotification('⚠️ 請填寫所有必填欄位', 'error');
+                return;
+            }
+            
+            // 驗證時間格式
+            const timeRegex = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/;
+            if (!timeRegex.test(time)) {
+                showNotification('⚠️ 時間格式錯誤，請使用 YYYY/MM/DD HH:MM 格式', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/scheduled-messages/${GUILD_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        time: time,
+                        message: message,
+                        channel_id: channelId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || '保存失敗');
+                }
+                
+                showNotification('✅ 定時消息已設定', 'success');
+                closeScheduledMessageDialog();
+                loadScheduledMessages();
+            } catch (error) {
+                console.error('保存定時消息失敗:', error);
+                showNotification('❌ ' + error.message, 'error');
+            }
+        }
+        
+        // 刪除定時消息
+        async function deleteScheduledMessage(messageId) {
+            if (!confirm('確定要刪除這個定時消息嗎？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/scheduled-messages/${GUILD_ID}/${messageId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('刪除失敗');
+                
+                showNotification('✅ 定時消息已刪除', 'success');
+                loadScheduledMessages();
+            } catch (error) {
+                console.error('刪除定時消息失敗:', error);
+                showNotification('❌ 刪除失敗', 'error');
             }
         }
     </script>
