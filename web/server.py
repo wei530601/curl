@@ -29,8 +29,35 @@ class WebServer:
         secret_key = base64.urlsafe_b64decode(session_secret.encode() if len(session_secret) == 44 else base64.urlsafe_b64encode(session_secret.encode()[:32]))
         
         # 創建應用
-        self.app = web.Application(middlewares=[session_middleware(EncryptedCookieStorage(secret_key))])
+        self.app = web.Application(middlewares=[session_middleware(EncryptedCookieStorage(secret_key)), self.error_middleware])
         self.setup_routes()
+    
+    @web.middleware
+    async def error_middleware(self, request, handler):
+        """錯誤處理中間件"""
+        try:
+            response = await handler(request)
+            # 處理404錯誤
+            if response.status == 404:
+                # 如果是API請求，返回JSON
+                if request.path.startswith('/api/'):
+                    return response
+                # 如果是頁面請求，返回404.html
+                with open('web/404.html', 'r', encoding='utf-8') as f:
+                    html = f.read()
+                return web.Response(text=html, content_type='text/html', status=404)
+            return response
+        except web.HTTPException as ex:
+            # 處理HTTP異常
+            if ex.status == 404:
+                # 如果是API請求，返回JSON
+                if request.path.startswith('/api/'):
+                    return web.json_response({'error': 'Not found'}, status=404)
+                # 如果是頁面請求，返回404.html
+                with open('web/404.html', 'r', encoding='utf-8') as f:
+                    html = f.read()
+                return web.Response(text=html, content_type='text/html', status=404)
+            raise
     
     def setup_routes(self):
         """設定路由"""
@@ -717,7 +744,9 @@ class WebServer:
                 has_access = True
                 guild_name = guild.name
             else:
-                return web.Response(text="找不到此伺服器", status=404)
+                with open('web/404.html', 'r', encoding='utf-8') as f:
+                    html = f.read()
+                return web.Response(text=html, content_type='text/html', status=404)
         else:
             # 非開發者需要有管理權限
             access_token = session.get('access_token')
