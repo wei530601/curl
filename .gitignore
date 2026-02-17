@@ -44,8 +44,8 @@ env/
 Thumbs.db
 
 # 脚本工具
-git_upload.bat
 get_command_ids.py
+test_routes.py
 
 # 更新日誌（僅本地保存）
 update-log.txt
