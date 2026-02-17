@@ -655,8 +655,19 @@
         }
 
         async function toggleDetails(guildId) {
+            console.log('toggleDetails called with guildId:', guildId);
             const detailsDiv = document.getElementById(`details-${guildId}`);
             const card = document.querySelector(`[data-guild-id="${guildId}"]`);
+
+            if (!detailsDiv) {
+                console.error('找不到 details div:', `details-${guildId}`);
+                return;
+            }
+
+            if (!card) {
+                console.error('找不到卡片:', `data-guild-id="${guildId}"`);
+                return;
+            }
 
             if (detailsDiv.classList.contains('show')) {
                 detailsDiv.classList.remove('show');
@@ -668,8 +679,12 @@
             detailsDiv.classList.add('show');
 
             try {
+                console.log('發送請求到:', `/api/dev/guild-config/${guildId}`);
                 const response = await fetch(`/api/dev/guild-config/${guildId}`);
+                console.log('響應狀態:', response.status);
+                
                 const data = await response.json();
+                console.log('收到數據:', data);
 
                 if (data.error) {
                     throw new Error(data.error);
@@ -677,9 +692,11 @@
 
                 displayGuildDetails(guildId, data);
             } catch (error) {
+                console.error('載入失敗:', error);
                 detailsDiv.innerHTML = `
                     <div class="empty-state">
                         <p>載入失敗: ${error.message}</p>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">請檢查瀏覽器控制台查看詳細錯誤</p>
                     </div>
                 `;
             }
@@ -742,8 +759,19 @@
         }
 
         async function loadMembers(guildId) {
+            console.log('loadMembers called with guildId:', guildId);
             const detailsDiv = document.getElementById(`details-${guildId}`);
             const card = document.querySelector(`[data-guild-id="${guildId}"]`);
+
+            if (!detailsDiv) {
+                console.error('找不到 details div:', `details-${guildId}`);
+                return;
+            }
+
+            if (!card) {
+                console.error('找不到卡片:', `data-guild-id="${guildId}"`);
+                return;
+            }
 
             card.classList.add('expanded');
             detailsDiv.classList.add('show');
@@ -755,8 +783,12 @@
             `;
 
             try {
+                console.log('發送請求到:', `/api/dev/guild-members/${guildId}?limit=50`);
                 const response = await fetch(`/api/dev/guild-members/${guildId}?limit=50`);
+                console.log('響應狀態:', response.status);
+                
                 const data = await response.json();
+                console.log('收到數據:', data);
 
                 if (data.error) {
                     throw new Error(data.error);
@@ -764,9 +796,11 @@
 
                 displayMembers(guildId, data);
             } catch (error) {
+                console.error('載入失敗:', error);
                 detailsDiv.innerHTML = `
                     <div class="empty-state">
                         <p>載入失敗: ${error.message}</p>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">請檢查瀏覽器控制台查看詳細錯誤</p>
                     </div>
                 `;
             }
