@@ -738,7 +738,9 @@ class WebServer:
                         break
         
         if not has_access:
-            return web.Response(text="您沒有權限訪問此伺服器", status=403)
+            with open('web/404.html', 'r', encoding='utf-8') as f:
+                html = f.read()
+            return web.Response(text=html, content_type='text/html', status=404)
         
         with open('web/dashboard.html', 'r', encoding='utf-8') as f:
             html = f.read()
