@@ -81,6 +81,25 @@
             background: #1d4ed8;
         }
 
+        .dev-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+
+        .dev-btn:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -301,6 +320,7 @@
         <div class="navbar-user">
             <img src="{AVATAR_URL}" alt="Avatar" class="user-avatar">
             <span class="user-name">{USERNAME}</span>
+            {DEV_BUTTON}
             <a href="/my-tickets" class="tickets-btn">🎫 我的客服單</a>
             <a href="/logout" class="logout-btn">登出</a>
         </div>

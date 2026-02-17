@@ -20,6 +20,10 @@ class WebServer:
         self.client_secret = os.getenv('DISCORD_CLIENT_SECRET')
         self.redirect_uri = os.getenv('DISCORD_REDIRECT_URI', f'http://localhost:{port}/callback')
         
+        # 開發者 ID 列表
+        dev_ids = os.getenv('DEV_ID', '')
+        self.dev_ids = [int(id.strip()) for id in dev_ids.split(',') if id.strip()]
+        
         # Session 密鑰
         session_secret = os.getenv('SESSION_SECRET', fernet.Fernet.generate_key().decode())
         secret_key = base64.urlsafe_b64decode(session_secret.encode() if len(session_secret) == 44 else base64.urlsafe_b64encode(session_secret.encode()[:32]))
@@ -86,6 +90,15 @@ class WebServer:
         self.app.router.add_post('/api/security/{guild_id}', self.api_update_security)
         self.app.router.add_post('/api/security/{guild_id}/banned-words', self.api_add_banned_word)
         self.app.router.add_delete('/api/security/{guild_id}/banned-words', self.api_delete_banned_word)
+        
+        # 開發者面板路由
+        self.app.router.add_get('/dev-panel', self.dev_panel)
+        self.app.router.add_get('/api/dev/all-guilds', self.api_dev_all_guilds)
+        self.app.router.add_get('/api/dev/guild-config/{guild_id}', self.api_dev_guild_config)
+    
+    def is_developer(self, user_id):
+        """檢查用戶是否為開發者"""
+        return int(user_id) in self.dev_ids
     
     async def index(self, request):
         """主頁"""
@@ -170,6 +183,12 @@ class WebServer:
         
         html = html.replace('{USERNAME}', user['username'])
         html = html.replace('{AVATAR_URL}', avatar_url)
+        
+        # 如果是開發者，顯示開發者面板按鈕
+        if self.is_developer(user['id']):
+            html = html.replace('{DEV_BUTTON}', '<a href="/dev-panel" class="dev-btn">🔧 開發者面板</a>')
+        else:
+            html = html.replace('{DEV_BUTTON}', '')
         
         return web.Response(text=html, content_type='text/html')
     
@@ -1747,6 +1766,123 @@ class WebServer:
             return web.json_response({'success': True, 'word': word, 'banned_words': security_data['banned_words']})
         except Exception as e:
             return web.json_response({'error': str(e)}, status=500)
+    
+    async def dev_panel(self, request):
+        """開發者面板"""
+        session = await get_session(request)
+        user = session.get('user')
+        
+        if not user:
+            raise web.HTTPFound('/login')
+        
+        # 檢查開發者權限
+        if not self.is_developer(user['id']):
+            return web.Response(text='<h1>403 Forbidden</h1><p>您沒有權限訪問開發者面板</p>', status=403, content_type='text/html')
+        
+        with open('web/dev-panel.html', 'r', encoding='utf-8') as f:
+            html = f.read()
+        
+        # 替換用戶資訊
+        avatar_url = f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.png" if user.get('avatar') else "https://cdn.discordapp.com/embed/avatars/0.png"
+        
+        html = html.replace('{USERNAME}', user['username'])
+        html = html.replace('{AVATAR_URL}', avatar_url)
+        
+        return web.Response(text=html, content_type='text/html')
+    
+    async def api_dev_all_guilds(self, request):
+        """API：獲取所有伺服器列表（開發者專用）"""
+        session = await get_session(request)
+        user = session.get('user')
+        
+        if not user or not self.is_developer(user['id']):
+            return web.json_response({'error': 'Unauthorized'}, status=403)
+        
+        guilds_data = []
+        
+        for guild in self.bot.guilds:
+            # 獲取伺服器圖標
+            icon_url = str(guild.icon.url) if guild.icon else None
+            
+            # 獲取擁有者資訊
+            owner = guild.owner
+            owner_info = {
+                'id': str(owner.id),
+                'name': owner.name,
+                'avatar': str(owner.avatar.url) if owner.avatar else None
+            } if owner else None
+            
+            guilds_data.append({
+                'id': str(guild.id),
+                'name': guild.name,
+                'icon': icon_url,
+                'member_count': guild.member_count,
+                'created_at': guild.created_at.isoformat(),
+                'owner': owner_info,
+                'features': guild.features,
+                'text_channels': len(guild.text_channels),
+                'voice_channels': len(guild.voice_channels),
+                'roles': len(guild.roles),
+                'emojis': len(guild.emojis)
+            })
+        
+        return web.json_response({
+            'total': len(guilds_data),
+            'guilds': guilds_data
+        })
+    
+    async def api_dev_guild_config(self, request):
+        """API：獲取指定伺服器的完整配置（開發者專用）"""
+        session = await get_session(request)
+        user = session.get('user')
+        
+        if not user or not self.is_developer(user['id']):
+            return web.json_response({'error': 'Unauthorized'}, status=403)
+        
+        guild_id = request.match_info.get('guild_id')
+        guild = self.bot.get_guild(int(guild_id))
+        
+        if not guild:
+            return web.json_response({'error': 'Guild not found'}, status=404)
+        
+        # 讀取所有配置文件
+        config_data = {}
+        data_dir = f"./data/{guild_id}"
+        
+        if os.path.exists(data_dir):
+            for filename in os.listdir(data_dir):
+                if filename.endswith('.json'):
+                    filepath = os.path.join(data_dir, filename)
+                    try:
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            config_data[filename[:-5]] = json.load(f)
+                    except Exception as e:
+                        config_data[filename[:-5]] = {'error': str(e)}
+        
+        # 獲取伺服器詳細資訊
+        guild_info = {
+            'id': str(guild.id),
+            'name': guild.name,
+            'icon': str(guild.icon.url) if guild.icon else None,
+            'owner_id': str(guild.owner_id),
+            'member_count': guild.member_count,
+            'created_at': guild.created_at.isoformat(),
+            'features': guild.features,
+            'verification_level': str(guild.verification_level),
+            'premium_tier': guild.premium_tier,
+            'channels': {
+                'text': [{'id': str(c.id), 'name': c.name, 'category': c.category.name if c.category else None} for c in guild.text_channels],
+                'voice': [{'id': str(c.id), 'name': c.name, 'category': c.category.name if c.category else None} for c in guild.voice_channels],
+                'categories': [{'id': str(c.id), 'name': c.name} for c in guild.categories]
+            },
+            'roles': [{'id': str(r.id), 'name': r.name, 'color': str(r.color), 'position': r.position, 'members': len(r.members)} for r in guild.roles],
+            'emojis': [{'id': str(e.id), 'name': e.name, 'animated': e.animated} for e in guild.emojis]
+        }
+        
+        return web.json_response({
+            'guild': guild_info,
+            'config': config_data
+        })
     
     async def start(self):
         """啟動 Web 伺服器"""
