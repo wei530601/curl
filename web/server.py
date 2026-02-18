@@ -1812,17 +1812,20 @@ class WebServer:
         
         # 檢查是否登錄
         if not user:
+            print(f"[權限檢查] 用戶未登錄")
             return False, None, False
         
         # 檢查是否為開發者（開發者有所有權限）
         is_dev = self.is_developer(user['id'])
         if is_dev:
+            print(f"[權限檢查] 用戶 {user.get('username')} 是開發者，允許訪問伺服器 {guild_id}")
             return True, user, True
         
         # 非開發者需要驗證伺服器權限
         try:
             access_token = session.get('access_token')
             if not access_token:
+                print(f"[權限檢查] 用戶 {user.get('username')} 沒有 access_token")
                 return False, user, False
             
             # 獲取用戶的 Discord 伺服器列表
@@ -1830,21 +1833,35 @@ class WebServer:
                 headers = {'Authorization': f"Bearer {access_token}"}
                 async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
                     if resp.status != 200:
+                        print(f"[權限檢查] Discord API 返回錯誤狀態碼: {resp.status}")
                         return False, user, False
                     user_guilds = await resp.json()
             
+            print(f"[權限檢查] 用戶 {user.get('username')} 有 {len(user_guilds)} 個伺服器")
+            print(f"[權限檢查] 目標伺服器ID: {guild_id} (類型: {type(guild_id)})")
+            
             # 檢查用戶是否在此伺服器且有管理權限
             for guild in user_guilds:
-                if guild['id'] == guild_id:
+                if str(guild['id']) == str(guild_id):
                     permissions = int(guild.get('permissions', 0))
+                    print(f"[權限檢查] 找到伺服器 {guild.get('name')}，權限值: {permissions} (二進制: {bin(permissions)})")
                     # 檢查管理員權限 (0x8) 或管理伺服器權限 (0x20)
-                    if permissions & 0x8 or permissions & 0x20:
+                    has_admin = (permissions & 0x8) != 0
+                    has_manage_guild = (permissions & 0x20) != 0
+                    print(f"[權限檢查] 管理員權限: {has_admin}, 管理伺服器權限: {has_manage_guild}")
+                    if has_admin or has_manage_guild:
+                        print(f"[權限檢查] 允許訪問")
                         return True, user, False
-                    break
+                    else:
+                        print(f"[權限檢查] 權限不足")
+                        return False, user, False
             
+            print(f"[權限檢查] 未找到伺服器 {guild_id}")
             return False, user, False
         except Exception as e:
-            print(f"驗證權限時出錯: {e}")
+            print(f"[權限檢查] 驗證權限時出錯: {e}")
+            import traceback
+            traceback.print_exc()
             return False, user, False
     
     async def dev_panel(self, request):
