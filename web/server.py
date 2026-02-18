@@ -284,6 +284,10 @@ class WebServer:
         
         guild_id = request.match_info.get('guild_id')
         
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         # 獲取伺服器
         guild = self.bot.get_guild(int(guild_id))
         if not guild:
@@ -310,6 +314,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         data_type = request.match_info.get('data_type')
         
         # 驗證數據類型
@@ -338,6 +347,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             # 獲取請求數據
@@ -393,6 +406,10 @@ class WebServer:
         
         guild_id = request.match_info.get('guild_id')
         
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         try:
             # 獲取請求數據
             data = await request.json()
@@ -445,6 +462,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         data_file = os.path.join('data', guild_id, 'custom_commands.json')
         
         if not os.path.exists(data_file):
@@ -465,6 +487,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             data = await request.json()
@@ -513,6 +539,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         command_name = request.match_info.get('command_name')
         
         try:
@@ -556,6 +587,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         command_name = request.match_info.get('command_name')
         
         try:
@@ -590,6 +626,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         data_file = os.path.join('data', guild_id, 'temp_voice.json')
         
         if not os.path.exists(data_file):
@@ -619,6 +660,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             data = await request.json()
@@ -679,6 +724,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             guild = self.bot.get_guild(int(guild_id))
@@ -792,7 +841,16 @@ class WebServer:
     
     async def api_get_warnings(self, request):
         """獲取警告數據"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             file_path = f'./data/{guild_id}/warnings.json'
@@ -832,6 +890,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         user_id = request.match_info['user_id']
         
         try:
@@ -867,6 +930,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         user_id = request.match_info['user_id']
         
         try:
@@ -905,6 +973,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         user_id = request.match_info['user_id']
         index = int(request.match_info['index'])
         
@@ -938,7 +1011,16 @@ class WebServer:
     
     async def api_get_achievements(self, request):
         """獲取成就數據"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             file_path = f'./data/{guild_id}/achievements.json'
@@ -990,7 +1072,17 @@ class WebServer:
     
     async def api_grant_achievement(self, request):
         """授予成就"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         user_id = request.match_info['user_id']
         achievement_id = request.match_info['achievement_id']
         
@@ -1031,7 +1123,17 @@ class WebServer:
     
     async def api_revoke_achievement(self, request):
         """撤銷成就"""
+        session = await get_session(request)
+        
+        if not session.get('user'):
+            return web.json_response({'error': 'Unauthorized'}, status=401)
+        
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         user_id = request.match_info['user_id']
         achievement_id = request.match_info['achievement_id']
         
@@ -1073,6 +1175,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             file_path = f'./data/{guild_id}/tickets.json'
@@ -1117,6 +1223,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             body = await request.json()
@@ -1230,6 +1340,25 @@ class WebServer:
         guild_id = request.match_info['guild_id']
         ticket_id = request.match_info['ticket_id']
         
+        # 檢查用戶權限
+        if not await self.check_guild_permission(user['id'], guild_id, session.get('access_token')):
+            # 如果不是管理員，檢查是否為客服單創建者
+            try:
+                file_path = f'./data/{guild_id}/tickets.json'
+                if os.path.exists(file_path):
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    if ticket_id in data['tickets']:
+                        ticket = data['tickets'][ticket_id]
+                        if str(ticket.get('user_id')) != str(user['id']):
+                            return web.json_response({'error': 'Forbidden'}, status=403)
+                    else:
+                        return web.json_response({'error': '客服單不存在'}, status=404)
+                else:
+                    return web.json_response({'error': '找不到客服單'}, status=404)
+            except:
+                return web.json_response({'error': 'Forbidden'}, status=403)
+        
         try:
             # 獲取客服單數據
             file_path = f'./data/{guild_id}/tickets.json'
@@ -1289,6 +1418,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info['guild_id']
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             body = await request.json()
@@ -1371,6 +1504,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         file_path = f'./data/{guild_id}/auto_reply.json'
         
         if not os.path.exists(file_path):
@@ -1418,6 +1556,10 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
         
         try:
             data_input = await request.json()
@@ -1468,6 +1610,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         rule_id = int(request.match_info.get('rule_id'))
         
         try:
@@ -1518,6 +1665,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         rule_id = int(request.match_info.get('rule_id'))
         
         try:
@@ -1552,6 +1704,10 @@ class WebServer:
         
         guild_id = request.match_info.get('guild_id')
         
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         try:
             data_input = await request.json()
             enabled = data_input.get('enabled', True)
@@ -1582,6 +1738,11 @@ class WebServer:
             return web.json_response({'error': 'Unauthorized'}, status=401)
         
         guild_id = request.match_info.get('guild_id')
+        
+        # 檢查用戶權限
+        if not await self.check_guild_permission(session.get('user')['id'], guild_id, session.get('access_token')):
+            return web.json_response({'error': 'Forbidden'}, status=403)
+        
         rule_id = int(request.match_info.get('rule_id'))
         
         try:
@@ -1627,6 +1788,10 @@ class WebServer:
             if not user:
                 return web.json_response({'error': '未登入'}, status=401)
             
+            # 檢查用戶權限
+            if not await self.check_guild_permission(user['id'], guild_id, session.get('access_token')):
+                return web.json_response({'error': 'Forbidden'}, status=403)
+            
             # 獲取數據
             filepath = f"./data/{guild_id}/security.json"
             if os.path.exists(filepath):
@@ -1658,6 +1823,10 @@ class WebServer:
             user = session.get('user')
             if not user:
                 return web.json_response({'error': '未登入'}, status=401)
+            
+            # 檢查用戶權限
+            if not await self.check_guild_permission(user['id'], guild_id, session.get('access_token')):
+                return web.json_response({'error': 'Forbidden'}, status=403)
             
             # 讀取請求數據
             data = await request.json()
@@ -1720,6 +1889,10 @@ class WebServer:
             if not user:
                 return web.json_response({'error': '未登入'}, status=401)
             
+            # 檢查用戶權限
+            if not await self.check_guild_permission(user['id'], guild_id, session.get('access_token')):
+                return web.json_response({'error': 'Forbidden'}, status=403)
+            
             # 讀取請求數據
             data = await request.json()
             word = data.get('word', '').strip()
@@ -1773,6 +1946,10 @@ class WebServer:
             if not user:
                 return web.json_response({'error': '未登入'}, status=401)
             
+            # 檢查用戶權限
+            if not await self.check_guild_permission(user['id'], guild_id, session.get('access_token')):
+                return web.json_response({'error': 'Forbidden'}, status=403)
+            
             # 讀取請求數據
             data = await request.json()
             word = data.get('word', '').strip()
@@ -1806,6 +1983,47 @@ class WebServer:
     def is_developer(self, user_id):
         """檢查用戶是否為開發者"""
         return int(user_id) in self.dev_ids
+    
+    async def check_guild_permission(self, user_id, guild_id, access_token):
+        """檢查用戶是否有權限訪問指定的伺服器
+        
+        Args:
+            user_id: 用戶 ID
+            guild_id: 伺服器 ID（字符串）
+            access_token: Discord OAuth2 access token
+            
+        Returns:
+            bool: 用戶是否有權限
+        """
+        # 開發者可以訪問所有伺服器
+        if self.is_developer(user_id):
+            return True
+        
+        # 檢查機器人是否在該伺服器中
+        bot_guild_ids = {str(guild.id) for guild in self.bot.guilds}
+        if guild_id not in bot_guild_ids:
+            return False
+        
+        # 獲取用戶的 Discord 伺服器列表
+        try:
+            async with ClientSession() as client_session:
+                headers = {'Authorization': f"Bearer {access_token}"}
+                async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
+                    if resp.status != 200:
+                        return False
+                    user_guilds = await resp.json()
+            
+            # 檢查用戶是否對該伺服器有管理權限
+            for guild in user_guilds:
+                if guild['id'] == guild_id:
+                    permissions = int(guild.get('permissions', 0))
+                    # 檢查管理員權限 (0x8) 或管理伺服器權限 (0x20)
+                    return bool(permissions & 0x8 or permissions & 0x20)
+            
+            return False
+        except Exception as e:
+            print(f"權限檢查錯誤: {e}")
+            return False
     
     async def dev_panel(self, request):
         """開發者面板"""
