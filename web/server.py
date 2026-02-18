@@ -282,12 +282,12 @@ class WebServer:
     
     async def api_stats(self, request):
         """API：特定伺服器統計數據"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         # 獲取伺服器
         guild = self.bot.get_guild(int(guild_id))
@@ -309,12 +309,12 @@ class WebServer:
     
     async def api_data(self, request):
         """API：讀取伺服器數據文件"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         data_type = request.match_info.get('data_type')
         
         # 驗證數據類型
@@ -337,12 +337,12 @@ class WebServer:
     
     async def api_toggle_welcome(self, request):
         """API：切換歡迎系統開關"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             # 獲取請求數據
@@ -391,12 +391,12 @@ class WebServer:
     
     async def api_update_welcome(self, request):
         """API：更新歡迎系統設定"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             # 獲取請求數據
@@ -444,12 +444,12 @@ class WebServer:
     
     async def api_get_custom_commands(self, request):
         """API：獲取自定義命令列表"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         data_file = os.path.join('data', guild_id, 'custom_commands.json')
         
         if not os.path.exists(data_file):
@@ -464,12 +464,12 @@ class WebServer:
     
     async def api_add_custom_command(self, request):
         """API：添加自定義命令"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             data = await request.json()
@@ -512,12 +512,12 @@ class WebServer:
     
     async def api_edit_custom_command(self, request):
         """API：編輯自定義命令"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         command_name = request.match_info.get('command_name')
         
         try:
@@ -555,12 +555,12 @@ class WebServer:
     
     async def api_delete_custom_command(self, request):
         """API：刪除自定義命令"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         command_name = request.match_info.get('command_name')
         
         try:
@@ -589,12 +589,12 @@ class WebServer:
     
     async def api_get_temp_voice_config(self, request):
         """API：獲取臨時語音配置"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         data_file = os.path.join('data', guild_id, 'temp_voice.json')
         
         if not os.path.exists(data_file):
@@ -618,12 +618,12 @@ class WebServer:
     
     async def api_update_temp_voice_config(self, request):
         """API：更新臨時語音配置"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             data = await request.json()
@@ -678,12 +678,12 @@ class WebServer:
     
     async def api_get_channels(self, request):
         """API：獲取伺服器頻道列表"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             guild = self.bot.get_guild(int(guild_id))
@@ -799,6 +799,11 @@ class WebServer:
         """獲取警告數據"""
         guild_id = request.match_info['guild_id']
         
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
+        
         try:
             file_path = f'./data/{guild_id}/warnings.json'
             if not os.path.exists(file_path):
@@ -831,12 +836,12 @@ class WebServer:
     
     async def api_clear_warnings(self, request):
         """清除用戶所有警告"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         user_id = request.match_info['user_id']
         
         try:
@@ -866,12 +871,12 @@ class WebServer:
     
     async def api_remove_latest_warning(self, request):
         """移除用戶最近一次警告"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         user_id = request.match_info['user_id']
         
         try:
@@ -904,12 +909,12 @@ class WebServer:
     
     async def api_remove_warning_by_index(self, request):
         """移除用戶指定索引的警告"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         user_id = request.match_info['user_id']
         index = int(request.match_info['index'])
         
@@ -944,6 +949,11 @@ class WebServer:
     async def api_get_achievements(self, request):
         """獲取成就數據"""
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             file_path = f'./data/{guild_id}/achievements.json'
@@ -996,6 +1006,11 @@ class WebServer:
     async def api_grant_achievement(self, request):
         """授予成就"""
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         user_id = request.match_info['user_id']
         achievement_id = request.match_info['achievement_id']
         
@@ -1037,6 +1052,11 @@ class WebServer:
     async def api_revoke_achievement(self, request):
         """撤銷成就"""
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         user_id = request.match_info['user_id']
         achievement_id = request.match_info['achievement_id']
         
@@ -1072,12 +1092,12 @@ class WebServer:
     
     async def api_get_tickets(self, request):
         """API：獲取客服單數據"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             file_path = f'./data/{guild_id}/tickets.json'
@@ -1116,12 +1136,12 @@ class WebServer:
     
     async def api_update_ticket_settings(self, request):
         """API：更新客服單設定"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
+        
+        # 驗證權限
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             body = await request.json()
@@ -1226,14 +1246,12 @@ class WebServer:
     
     async def api_get_ticket_transcript(self, request):
         """API：獲取客服單聊天記錄HTML"""
-        session = await get_session(request)
-        user = session.get('user')
-        
-        if not user:
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
         ticket_id = request.match_info['ticket_id']
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             # 獲取客服單數據
@@ -1253,22 +1271,8 @@ class WebServer:
             user_id = user['id']
             is_ticket_owner = str(ticket.get('user_id')) == str(user_id)
             
-            # 檢查是否為管理員（從 access_token 獲取用戶的公團權限）
-            is_admin = False
-            access_token = session.get('access_token')
-            if access_token:
-                async with ClientSession() as client_session:
-                    headers = {'Authorization': f"Bearer {access_token}"}
-                    async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
-                        if resp.status == 200:
-                            user_guilds = await resp.json()
-                            for guild in user_guilds:
-                                if str(guild['id']) == str(guild_id):
-                                    permissions = int(guild.get('permissions', 0))
-                                    is_admin = (permissions & 0x8) == 0x8
-                                    break
-            
-            if not (is_ticket_owner or is_admin):
+            # is_dev 已經在 verify_guild_access 中判斷過，管理員也已經驗證過
+            if not (is_ticket_owner or is_dev or has_access):
                 return web.json_response({'error': '無權查看此客服單'}, status=403)
             
             # 獲取HTML文件
@@ -1288,12 +1292,11 @@ class WebServer:
     
     async def api_create_ticket_panel(self, request):
         """API：創建客服單面板"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info['guild_id']
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             body = await request.json()
@@ -1370,12 +1373,12 @@ class WebServer:
     
     async def api_get_auto_replies(self, request):
         """API：獲取自動回覆規則"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
+        
         file_path = f'./data/{guild_id}/auto_reply.json'
         
         if not os.path.exists(file_path):
@@ -1417,12 +1420,11 @@ class WebServer:
     
     async def api_add_auto_reply(self, request):
         """API：添加自動回覆規則"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             data_input = await request.json()
@@ -1451,7 +1453,7 @@ class WebServer:
                 'reaction': data_input.get('reaction', '👍'),
                 'triggered_count': 0,
                 'created_at': datetime.now().isoformat(),
-                'created_by': session.get('user', {}).get('id')
+                'created_by': user.get('id')
             }
             
             data.setdefault('rules', []).append(new_rule)
@@ -1467,13 +1469,12 @@ class WebServer:
     
     async def api_update_auto_reply(self, request):
         """API：更新自動回覆規則"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
         rule_id = int(request.match_info.get('rule_id'))
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             data_input = await request.json()
@@ -1517,13 +1518,12 @@ class WebServer:
     
     async def api_delete_auto_reply(self, request):
         """API：刪除自動回覆規則"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
         rule_id = int(request.match_info.get('rule_id'))
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             file_path = f'./data/{guild_id}/auto_reply.json'
@@ -1550,12 +1550,11 @@ class WebServer:
     
     async def api_toggle_auto_reply_system(self, request):
         """API：開關自動回覆系統"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             data_input = await request.json()
@@ -1581,13 +1580,12 @@ class WebServer:
     
     async def api_toggle_auto_reply_rule(self, request):
         """API：開關特定自動回覆規則"""
-        session = await get_session(request)
-        
-        if not session.get('user'):
-            return web.json_response({'error': 'Unauthorized'}, status=401)
-        
         guild_id = request.match_info.get('guild_id')
         rule_id = int(request.match_info.get('rule_id'))
+        has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+        
+        if not has_access:
+            return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
         
         try:
             data_input = await request.json()
@@ -1625,12 +1623,10 @@ class WebServer:
         """獲取安全系統設定"""
         try:
             guild_id = request.match_info['guild_id']
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
             
-            # 檢查權限
-            session = await get_session(request)
-            user = session.get('user')
-            if not user:
-                return web.json_response({'error': '未登入'}, status=401)
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
             
             # 獲取數據
             filepath = f"./data/{guild_id}/security.json"
@@ -1657,12 +1653,10 @@ class WebServer:
         """更新安全系統設定"""
         try:
             guild_id = request.match_info['guild_id']
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
             
-            # 檢查權限
-            session = await get_session(request)
-            user = session.get('user')
-            if not user:
-                return web.json_response({'error': '未登入'}, status=401)
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
             
             # 讀取請求數據
             data = await request.json()
@@ -1718,12 +1712,10 @@ class WebServer:
         """添加違禁詞"""
         try:
             guild_id = request.match_info['guild_id']
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
             
-            # 檢查權限
-            session = await get_session(request)
-            user = session.get('user')
-            if not user:
-                return web.json_response({'error': '未登入'}, status=401)
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
             
             # 讀取請求數據
             data = await request.json()
@@ -1771,12 +1763,10 @@ class WebServer:
         """刪除違禁詞"""
         try:
             guild_id = request.match_info['guild_id']
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
             
-            # 檢查權限
-            session = await get_session(request)
-            user = session.get('user')
-            if not user:
-                return web.json_response({'error': '未登入'}, status=401)
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
             
             # 讀取請求數據
             data = await request.json()
@@ -1811,6 +1801,51 @@ class WebServer:
     def is_developer(self, user_id):
         """檢查用戶是否為開發者"""
         return int(user_id) in self.dev_ids
+    
+    async def verify_guild_access(self, request, guild_id):
+        """
+        驗證用戶是否有權限訪問指定伺服器
+        返回: (has_access: bool, user: dict, is_dev: bool)
+        """
+        session = await get_session(request)
+        user = session.get('user')
+        
+        # 檢查是否登錄
+        if not user:
+            return False, None, False
+        
+        # 檢查是否為開發者（開發者有所有權限）
+        is_dev = self.is_developer(user['id'])
+        if is_dev:
+            return True, user, True
+        
+        # 非開發者需要驗證伺服器權限
+        try:
+            access_token = session.get('access_token')
+            if not access_token:
+                return False, user, False
+            
+            # 獲取用戶的 Discord 伺服器列表
+            async with ClientSession() as client_session:
+                headers = {'Authorization': f"Bearer {access_token}"}
+                async with client_session.get('https://discord.com/api/users/@me/guilds', headers=headers) as resp:
+                    if resp.status != 200:
+                        return False, user, False
+                    user_guilds = await resp.json()
+            
+            # 檢查用戶是否在此伺服器且有管理權限
+            for guild in user_guilds:
+                if guild['id'] == guild_id:
+                    permissions = int(guild.get('permissions', 0))
+                    # 檢查管理員權限 (0x8) 或管理伺服器權限 (0x20)
+                    if permissions & 0x8 or permissions & 0x20:
+                        return True, user, False
+                    break
+            
+            return False, user, False
+        except Exception as e:
+            print(f"驗證權限時出錯: {e}")
+            return False, user, False
     
     async def dev_panel(self, request):
         """開發者面板"""
@@ -1958,11 +1993,11 @@ class WebServer:
     async def api_get_scheduled_messages(self, request):
         """獲取定時消息列表"""
         try:
-            session = await get_session(request)
-            if not session.get('user'):
-                return web.json_response({'error': 'Unauthorized'}, status=401)
-            
             guild_id = request.match_info.get('guild_id')
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+            
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
             
             # 載入定時消息數據
             import os
@@ -1981,11 +2016,12 @@ class WebServer:
     async def api_add_scheduled_message(self, request):
         """添加定時消息"""
         try:
-            session = await get_session(request)
-            if not session.get('user'):
-                return web.json_response({'error': 'Unauthorized'}, status=401)
-            
             guild_id = request.match_info.get('guild_id')
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+            
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
+            
             data = await request.json()
             
             # 驗證必要字段
@@ -2029,7 +2065,7 @@ class WebServer:
                 'message': data['message'],
                 'channel_id': data['channel_id'],
                 'created_at': datetime.utcnow().isoformat(),
-                'created_by': session.get('user')['username']
+                'created_by': user['username']
             }
             
             messages.append(new_message)
@@ -2055,12 +2091,12 @@ class WebServer:
     async def api_delete_scheduled_message(self, request):
         """刪除定時消息"""
         try:
-            session = await get_session(request)
-            if not session.get('user'):
-                return web.json_response({'error': 'Unauthorized'}, status=401)
-            
             guild_id = request.match_info.get('guild_id')
             message_id = request.match_info.get('message_id')
+            has_access, user, is_dev = await self.verify_guild_access(request, guild_id)
+            
+            if not has_access:
+                return web.json_response({'error': 'Unauthorized - 您沒有權限訪問此伺服器'}, status=403)
             
             # 載入數據
             import os
