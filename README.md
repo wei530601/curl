@@ -2,6 +2,9 @@
 
 这是一個使用Python编写的Discord機器人，支援Slash Commands和Cogs模組化結構。
 
+> [!WARNING]
+> 使用本機器人之代碼，務必標注“此功能由wei530601開發，并在Github上開源”。
+
 ## 功能特點
 
 - ✅ 使用 Discord.py 2.0+ 
