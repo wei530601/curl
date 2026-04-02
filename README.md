@@ -6,6 +6,7 @@
 > 使用本機器人之代碼，務必標注“此功能由wei530601開發，并在Github上開源”。
 
 機器人支援群： https://discord.gg/UgmSc3scTA
+恭喜！本機器人已獲得Discord的驗證！
 
 ## 功能特點
 
